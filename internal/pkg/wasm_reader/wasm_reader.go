@@ -6,9 +6,6 @@ import (
 	"io"
 )
 
-// queue of readers
-// reader -> chain another -> use it -> pop it -> use the
-
 type WasmReader struct {
 	readers []io.Reader
 }
@@ -24,6 +21,7 @@ func NewWasmReader(r io.Reader) *WasmReader {
 func (wr *WasmReader) Push(val interface{}) {
 	if r, ok := val.(io.Reader); ok {
 		wr.readers = append(wr.readers, r)
+		return
 	}
 	reporter.ReportError("expected the val to be of type io.Reader")
 }
