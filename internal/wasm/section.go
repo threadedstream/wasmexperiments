@@ -25,9 +25,13 @@ const (
 	DataSectionID
 )
 
+type Serializer interface {
+	Deserialize(wr *wasm_reader.WasmReader) error
+	Serialize(wr *wasm_reader.WasmReader) error
+}
+
 type Section interface {
 	IsSection() bool
-	Read() error
 }
 
 type FunctionSig struct {
@@ -42,7 +46,9 @@ type TypesSection struct {
 
 func (ts TypesSection) IsSection() bool { return true }
 
-func (ts *TypesSection) Read() error {
+func (ts *TypesSection) Serialize() error { return nil }
+
+func (ts *TypesSection) Deserialize() error {
 	dataLen, err := wbinary.ReadVarUint32(ts.reader)
 	if err != nil {
 		return err
@@ -111,6 +117,98 @@ func (ts *TypesSection) Read() error {
 	return nil
 }
 
+type ExternalKind int
+
+const (
+	FunctionKind ExternalKind = iota
+	TableKind
+	MemoryKind
+	GlobalKind
+)
+
+type ImportDesc interface {
+	Kind() ExternalKind
+	IsImportDesc() bool
+}
+
+type FunctionKindDesc struct {
+	SigIndex uint32
+}
+
+func NewFunctionKindDesc(sigIndex uint32) *FunctionKindDesc {
+	fk := new(FunctionKindDesc)
+	fk.SigIndex = sigIndex
+	return fk
+}
+
+func (f FunctionKindDesc) Kind() ExternalKind { return FunctionKind }
+
+func (f FunctionKindDesc) IsImport() bool { return true }
+
+type ElementType int
+
+const FuncRefElementType ElementType = 0x70
+
+type Table struct {
+	ElemType ElementType
+	Limits   ResizableLimits
+}
+
+type TableKindDesc struct {
+	Table Table
+}
+
+type ResizableLimits struct {
+	Flags   uint32
+	Minimum uint32
+}
+
+func NewTableKindDesc(table Table) *TableKindDesc {
+	desc := new(TableKindDesc)
+	desc.Table = table
+	return desc
+}
+
+func (t TableKindDesc) Kind() ExternalKind { return TableKind }
+
+func (t TableKindDesc) IsImportDesc() bool { return true }
+
+type MemoryKindDesc struct {
+	Limits ResizableLimits
+}
+
+func NewMemoryKindDesc(limits ResizableLimits) *MemoryKindDesc {
+	desc := new(MemoryKindDesc)
+	desc.Limits = limits
+	return desc
+}
+
+func (m MemoryKindDesc) Kind() ExternalKind { return MemoryKind }
+
+func (m MemoryKindDesc) IsImportDesc() bool { return true }
+
+type GlobalKindDesc struct {
+	Type    ValueType
+	Mutable bool
+}
+
+func NewGlobalKindDesc(typ ValueType, mutable bool) *GlobalKindDesc {
+	desc := new(GlobalKindDesc)
+	desc.Type = typ
+	desc.Mutable = mutable
+	return desc
+}
+
+func (g GlobalKindDesc) Kind() ExternalKind {
+	return GlobalKind
+}
+
+func (g GlobalKindDesc) IsImportDesc() bool {
+	return true
+}
+
 type ImportSection struct {
-	// TODO
+	ModuleName   string
+	ExportName   string
+	Descriptions []ImportDesc
 }
