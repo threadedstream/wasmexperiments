@@ -1,10 +1,12 @@
 package wasm
 
 import (
+	"bytes"
 	"errors"
 	wr "github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
+	"io"
 )
 
 const (
@@ -13,8 +15,19 @@ const (
 )
 
 type Module struct {
-	typesSection *TypesSection
-	wr           *wr.WasmReader
+	TypesSection    *TypesSection
+	ImportSection   *ImportSection
+	FunctionSection *FunctionSection
+	TableSection    *TableSection
+	MemorySection   *MemorySection
+	GlobalSection   *GlobalSection
+	ExportSection   *ExportSection
+	StartSection    *StartSection
+	ElementSection  *ElementSection
+	CodeSection     *CodeSection
+	DataSection     *DataSection
+	CustomSections  CustomSections
+	wr              *wr.WasmReader
 }
 
 func NewModule(wr *wr.WasmReader) *Module {
@@ -40,7 +53,7 @@ func (m *Module) Read() error {
 		return errors.New("versions do not match")
 	}
 
-	if err := m.readSections(); err != nil {
+	if err = m.readSections(); err != nil {
 		return err
 	}
 	return nil
@@ -48,16 +61,56 @@ func (m *Module) Read() error {
 
 func (m *Module) readSections() error {
 	// types section
-	for id, handler := range map[SectionID]func() error{
-		TypeSectionID: m.readTypeSection,
-	} {
-		if err := m.validateSectionID(id); err != nil {
-			return err
-		}
-		if err := handler(); err != nil {
-			return err
-		}
+	sectionHandlers := map[SectionID]func() error{
+		TypeSectionID:         m.readTypeSection,
+		ImportSectionID:       m.readImportSection,
+		FunctionSectionID:     m.readFunctionSection,
+		TableSectionID:        m.readTableSection,
+		LinearMemorySectionID: m.readMemorySection,
 	}
+
+	var err error
+	var sectionID byte
+	for err == nil {
+		sectionID, err = m.wr.ReadByte()
+		if err != nil {
+			continue
+		}
+		if handler, ok := sectionHandlers[SectionID(sectionID)]; ok {
+			if err = m.pushRelevantReader(); err != nil {
+				return err
+			}
+			if err = handler(); err != nil {
+				return err
+			}
+			m.wr.Pop()
+			continue
+		}
+		err = werrors.ErrInvalidSectionID
+	}
+
+	if err == nil || err == io.EOF {
+		return nil
+	}
+
+	return err
+}
+
+func (m *Module) pushRelevantReader() error {
+	dataLen, err := wbinary.ReadVarUint32(m.wr)
+	if err != nil {
+		return err
+	}
+	sectionData := new(bytes.Buffer)
+	sectionData.Grow(int(dataLen))
+	sectionReader := io.LimitReader(io.TeeReader(m.wr.Peek().(io.Reader), sectionData), int64(dataLen))
+	m.wr.Push(sectionReader)
+	_, err = m.wr.ReadBytes(int(dataLen))
+	if err != nil {
+		return err
+	}
+	m.wr.Pop()
+	m.wr.Push(sectionData)
 	return nil
 }
 
@@ -75,12 +128,55 @@ func (m *Module) validateSectionID(expected SectionID) error {
 }
 
 func (m *Module) readTypeSection() error {
-	ts := &TypesSection{
-		reader: m.wr,
-	}
-	if err := ts.Read(); err != nil {
+	ts := new(TypesSection)
+	if err := ts.Deserialize(m.wr); err != nil {
 		return err
 	}
-	m.typesSection = ts
+	m.TypesSection = ts
+	return nil
+}
+
+func (m *Module) readImportSection() error {
+	is := new(ImportSection)
+	if err := is.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.ImportSection = is
+	return nil
+}
+
+func (m *Module) readFunctionSection() error {
+	fs := new(FunctionSection)
+	if err := fs.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.FunctionSection = fs
+	return nil
+}
+
+func (m *Module) readTableSection() error {
+	ts := new(TableSection)
+	if err := ts.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.TableSection = ts
+	return nil
+}
+
+func (m *Module) readMemorySection() error {
+	ms := new(MemorySection)
+	if err := ms.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.MemorySection = ms
+	return nil
+}
+
+func (m *Module) readGlobalSection() error {
+	gs := new(GlobalSection)
+	if err := gs.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.GlobalSection = gs
 	return nil
 }

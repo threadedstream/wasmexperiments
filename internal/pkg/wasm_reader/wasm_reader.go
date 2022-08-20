@@ -27,7 +27,7 @@ func (wr *WasmReader) Push(val interface{}) {
 }
 
 func (wr *WasmReader) Peek() interface{} {
-	utils.Assert(!wr.Empty(), "popping from an empty queue")
+	utils.Assert(!wr.Empty(), "peeking from an empty queue")
 	l := len(wr.readers)
 	return wr.readers[l-1]
 }

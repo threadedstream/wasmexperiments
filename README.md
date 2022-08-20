@@ -7,9 +7,8 @@ and hopefully make something good out of it. Much of the inspiration is drawn fr
 # TODO
 ### Deserialization
 - [x] Types Section
-- [ ] Import Section
-- [ ] Function Section
-- [ ] Table Section
+- [x] Function Section
+- [x] Table Section
 - [ ] Global Section
 - [ ] Export Section
 - [ ] Start Section
