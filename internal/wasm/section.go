@@ -1,6 +1,7 @@
 package wasm
 
 import (
+	"bytes"
 	"errors"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
@@ -30,6 +31,10 @@ type Serializer interface {
 
 type Section interface {
 	IsSection() bool
+}
+
+type Validatable interface {
+	Validate() error
 }
 
 type FunctionSig struct {
@@ -239,6 +244,20 @@ func (_ GlobalKindDesc) IsImportDesc() bool { return true }
 func (_ GlobalKindDesc) Serialize() error   { return nil }
 
 func (g *GlobalKindDesc) Deserialize(reader *wasm_reader.WasmReader) error {
+	if err := g.Type.Deserialize(reader); err != nil {
+		return err
+	}
+
+	mut, err := reader.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	if mut != 0x0 && mut != 0x1 {
+		return errors.New("section: expected Mutable to be 0x0 or 0x1")
+	}
+
+	g.Mutable = mut == 0x1
 	return nil
 }
 
@@ -394,6 +413,15 @@ type GlobalDecl struct {
 func (_ GlobalDecl) Serialize() error { return nil }
 
 func (g *GlobalDecl) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if err = g.Description.Deserialize(reader); err != nil {
+		return err
+	}
+
+	if g.Init, err = readInitExpr(reader); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -421,23 +449,72 @@ func (g *GlobalSection) Deserialize(reader *wasm_reader.WasmReader) error {
 	return nil
 }
 
-type ExportSection struct {
+type ExportEntry struct {
+	Name  string
+	Kind  ExternalKind
+	Index uint32
 }
+
+func (e ExportEntry) Serialize() error { return nil }
+
+func (e *ExportEntry) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if e.Name, err = wbinary.ReadUTF8StringUint(reader); err != nil {
+		return err
+	}
+
+	if err = e.Kind.Deserialize(reader); err != nil {
+		return err
+	}
+
+	if e.Index, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+	return nil
+}
+
+type ExportSection struct {
+	Entries map[string]*ExportEntry
+}
+
+var ErrDuplicateExport = errors.New("section: duplicate exports not allowed")
 
 func (_ ExportSection) IsSection() bool  { return true }
 func (_ ExportSection) Serialize() error { return nil }
+func (_ ExportSection) Validate() error  { return nil }
 
 func (e *ExportSection) Deserialize(reader *wasm_reader.WasmReader) error {
+	count, err := wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+	e.Entries = make(map[string]*ExportEntry, count)
+
+	for i := uint32(0); i < count; i++ {
+		entry := new(ExportEntry)
+		if err = entry.Deserialize(reader); err != nil {
+			return err
+		}
+		if _, exists := e.Entries[entry.Name]; exists {
+			return ErrDuplicateExport
+		}
+		e.Entries[entry.Name] = entry
+	}
 	return nil
 }
 
 type StartSection struct {
+	Index uint32
 }
 
 func (_ StartSection) IsSection() bool  { return true }
 func (_ StartSection) Serialize() error { return nil }
 
 func (s *StartSection) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if s.Index, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -451,13 +528,94 @@ func (e *ElementSection) Deserialize(reader *wasm_reader.WasmReader) error {
 	return nil
 }
 
+type LocalEntry struct {
+	Count uint32
+	Type  ValueType
+}
+
+func (_ LocalEntry) Serialize() error { return nil }
+
+func (l *LocalEntry) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if l.Count, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+	if err = l.Type.Deserialize(reader); err != nil {
+		return err
+	}
+	return nil
+}
+
+type FunctionBody struct {
+	Size   uint32
+	Locals []*LocalEntry
+	Code   []byte
+}
+
+var ErrFunctionNoEnd = errors.New("section: missing 'end' instruction at the end of function body")
+
+func (fb FunctionBody) Serialize() error { return nil }
+
+func (fb *FunctionBody) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if fb.Size, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+
+	var body []byte
+	if body, err = reader.ReadBytes(int(fb.Size)); err != nil {
+		return err
+	}
+
+	bodyReader := bytes.NewBuffer(body)
+	reader.Push(bodyReader)
+	defer reader.Pop()
+
+	// read number of locals
+	var localCount uint32
+	if localCount, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+	fb.Locals = make([]*LocalEntry, 0, localCount)
+	for i := uint32(0); i < localCount; i++ {
+		local := new(LocalEntry)
+		if err = local.Deserialize(reader); err != nil {
+			return err
+		}
+		fb.Locals = append(fb.Locals, local)
+	}
+
+	code := bodyReader.Bytes()
+	if code[len(code)-1] != end {
+		return ErrFunctionNoEnd
+	}
+
+	fb.Code = code[:len(code)-1]
+
+	return nil
+}
+
 type CodeSection struct {
+	Entries []*FunctionBody
 }
 
 func (_ CodeSection) IsSection() bool  { return true }
 func (_ CodeSection) Serialize() error { return nil }
 
 func (c *CodeSection) Deserialize(reader *wasm_reader.WasmReader) error {
+	count, err := wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return nil
+	}
+	c.Entries = make([]*FunctionBody, 0, count)
+
+	for i := uint32(0); i < count; i++ {
+		functionBody := new(FunctionBody)
+		if err = functionBody.Deserialize(reader); err != nil {
+			return err
+		}
+		c.Entries = append(c.Entries, functionBody)
+	}
 	return nil
 }
 

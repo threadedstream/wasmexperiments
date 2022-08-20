@@ -7,6 +7,14 @@ import (
 	"unicode/utf8"
 )
 
+func ReadU64(wr *wasm_reader.WasmReader) (uint64, error) {
+	val, err := wr.ReadBytes(8)
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(val), nil
+}
+
 func ReadU32(wr *wasm_reader.WasmReader) (uint32, error) {
 	val, err := wr.ReadBytes(4)
 	if err != nil {

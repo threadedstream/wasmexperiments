@@ -9,11 +9,11 @@ and hopefully make something good out of it. Much of the inspiration is drawn fr
 - [x] Types Section
 - [x] Function Section
 - [x] Table Section
-- [ ] Global Section
-- [ ] Export Section
-- [ ] Start Section
+- [x] Global Section
+- [x] Export Section
+- [x] Start Section
 - [ ] Element Section
-- [ ] Code Section
+- [x] Code Section
 - [ ] Data Section
 ### Basic interpretation
 - [ ] Write a basic wasm interpreter that interprets addition program

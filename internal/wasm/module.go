@@ -67,6 +67,10 @@ func (m *Module) readSections() error {
 		FunctionSectionID:     m.readFunctionSection,
 		TableSectionID:        m.readTableSection,
 		LinearMemorySectionID: m.readMemorySection,
+		GlobalSectionID:       m.readGlobalSection,
+		ExportSectionID:       m.readExportSection,
+		StartSectionID:        m.readStartSection,
+		CodeSectionID:         m.readCodeSection,
 	}
 
 	var err error
@@ -178,5 +182,32 @@ func (m *Module) readGlobalSection() error {
 		return err
 	}
 	m.GlobalSection = gs
+	return nil
+}
+
+func (m *Module) readExportSection() error {
+	es := new(ExportSection)
+	if err := es.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.ExportSection = es
+	return nil
+}
+
+func (m *Module) readStartSection() error {
+	ss := new(StartSection)
+	if err := ss.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.StartSection = ss
+	return nil
+}
+
+func (m *Module) readCodeSection() error {
+	cs := new(CodeSection)
+	if err := cs.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.CodeSection = cs
 	return nil
 }
