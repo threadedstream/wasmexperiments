@@ -15,6 +15,11 @@ and hopefully make something good out of it. Much of the inspiration is drawn fr
 - [x] Element Section
 - [x] Code Section
 - [x] Data Section
+
+### Instructions
+- [ ] Define all existing instructions in an informative way (its name, number of input params)
+- [ ] Dump module's code in the form of bytecode instructions (sort of debug function)
+
 ### Basic interpretation
 - [ ] Write a basic wasm interpreter that interprets addition program
     
