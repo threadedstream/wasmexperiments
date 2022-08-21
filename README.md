@@ -12,9 +12,9 @@ and hopefully make something good out of it. Much of the inspiration is drawn fr
 - [x] Global Section
 - [x] Export Section
 - [x] Start Section
-- [ ] Element Section
+- [x] Element Section
 - [x] Code Section
-- [ ] Data Section
+- [x] Data Section
 ### Basic interpretation
 - [ ] Write a basic wasm interpreter that interprets addition program
     

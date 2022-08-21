@@ -70,7 +70,9 @@ func (m *Module) readSections() error {
 		GlobalSectionID:       m.readGlobalSection,
 		ExportSectionID:       m.readExportSection,
 		StartSectionID:        m.readStartSection,
+		ElementSectionID:      m.readElementSection,
 		CodeSectionID:         m.readCodeSection,
+		DataSectionID:         m.readDataSection,
 	}
 
 	var err error
@@ -203,11 +205,29 @@ func (m *Module) readStartSection() error {
 	return nil
 }
 
+func (m *Module) readElementSection() error {
+	es := new(ElementSection)
+	if err := es.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.ElementSection = es
+	return nil
+}
+
 func (m *Module) readCodeSection() error {
 	cs := new(CodeSection)
 	if err := cs.Deserialize(m.wr); err != nil {
 		return err
 	}
 	m.CodeSection = cs
+	return nil
+}
+
+func (m *Module) readDataSection() error {
+	ds := new(DataSection)
+	if err := ds.Deserialize(m.wr); err != nil {
+		return err
+	}
+	m.DataSection = ds
 	return nil
 }

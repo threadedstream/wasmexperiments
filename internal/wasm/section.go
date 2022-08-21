@@ -518,13 +518,60 @@ func (s *StartSection) Deserialize(reader *wasm_reader.WasmReader) error {
 	return nil
 }
 
+type TableInitializer struct {
+	Index  uint32
+	Offset []byte   // must return i32
+	Elems  []uint32 // in case if table's element_type is funcref
+}
+
+func (_ TableInitializer) Serializer() error { return nil }
+
+func (t *TableInitializer) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if t.Index, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+	if t.Offset, err = readInitExpr(reader); err != nil {
+		return err
+	}
+
+	elemsNum, err := wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+	t.Elems = make([]uint32, elemsNum, elemsNum)
+	for i := uint32(0); i < elemsNum; i++ {
+		elem, err := wbinary.ReadVarUint32(reader)
+		if err != nil {
+			return err
+		}
+		t.Elems[i] = elem
+	}
+	return nil
+}
+
 type ElementSection struct {
+	Entries []*TableInitializer
 }
 
 func (_ ElementSection) IsSection() bool  { return true }
 func (_ ElementSection) Serialize() error { return nil }
 
+// TODO(threadedstream): has not yet been tested
 func (e *ElementSection) Deserialize(reader *wasm_reader.WasmReader) error {
+	count, err := wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+	e.Entries = make([]*TableInitializer, count, count)
+
+	for i := uint32(0); i < count; i++ {
+		tableInit := new(TableInitializer)
+		if err = tableInit.Deserialize(reader); err != nil {
+			return err
+		}
+		e.Entries[i] = tableInit
+	}
 	return nil
 }
 
@@ -619,13 +666,49 @@ func (c *CodeSection) Deserialize(reader *wasm_reader.WasmReader) error {
 	return nil
 }
 
+type DataInitializer struct {
+	Index  uint32
+	Offset []byte
+	Data   []byte
+}
+
+func (_ DataInitializer) Serialize() error { return nil }
+
+func (d *DataInitializer) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if d.Index, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+	if d.Offset, err = readInitExpr(reader); err != nil {
+		return err
+	}
+	if d.Data, err = wbinary.ReadByteArray(reader); err != nil {
+		return err
+	}
+	return nil
+}
+
 type DataSection struct {
+	Entries []*DataInitializer
 }
 
 func (_ DataSection) IsSection() bool  { return true }
 func (_ DataSection) Serialize() error { return nil }
 
 func (d *DataSection) Deserialize(reader *wasm_reader.WasmReader) error {
+	count, err := wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+	d.Entries = make([]*DataInitializer, 0, count)
+
+	for i := uint32(0); i < count; i++ {
+		dataInit := new(DataInitializer)
+		if err = dataInit.Deserialize(reader); err != nil {
+			return err
+		}
+		d.Entries = append(d.Entries, dataInit)
+	}
 	return nil
 }
 
