@@ -7,12 +7,24 @@ import (
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
 	"io"
+	"reflect"
 )
 
 const (
 	magicCookie = 0x6d736100
 	version     = 0x1
 )
+
+type Function struct {
+	Sig  *FunctionSig
+	Body *FunctionBody
+	Host reflect.Value
+	Name string
+}
+
+func (fnc Function) IsHost() bool {
+	return fnc.Host != reflect.Value{}
+}
 
 type Module struct {
 	TypesSection    *TypesSection
@@ -28,6 +40,8 @@ type Module struct {
 	DataSection     *DataSection
 	CustomSections  CustomSections
 	wr              *wr.WasmReader
+
+	FunctionIndexSpace []*Function
 }
 
 func NewModule(wr *wr.WasmReader) *Module {

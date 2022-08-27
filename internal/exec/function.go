@@ -13,5 +13,25 @@ type compiledFunction struct {
 }
 
 func (cf *compiledFunction) call(vm *VM, index int64) {
-	// TODO(threadedstream): implement call logic
+	stack := make([]uint64, 0, cf.maxDepth+1)
+	locals := make([]uint64, cf.totalLocalVars)
+
+	for i := cf.args - 1; i > 0; i-- {
+		locals[i] = vm.popUint64()
+	}
+
+	prevCtx := vm.ctx
+	vm.ctx = context{
+		stack:   stack,
+		locals:  locals,
+		code:    cf.code,
+		pc:      0,
+		curFunc: index,
+	}
+
+	ret := vm.execCode()
+	vm.ctx = prevCtx
+	if cf.returns {
+		vm.pushUint64(ret)
+	}
 }
