@@ -32,6 +32,6 @@ func (cf *compiledFunction) call(vm *VM, index int64) {
 	ret := vm.execCode()
 	vm.ctx = prevCtx
 	if cf.returns {
-		vm.pushUint64(ret)
+		vm.pushUint64(ret.(uint64))
 	}
 }

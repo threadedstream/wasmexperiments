@@ -3,6 +3,7 @@ package wasm
 import (
 	"bytes"
 	"errors"
+
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 )
@@ -38,8 +39,8 @@ type Validatable interface {
 }
 
 type FunctionSig struct {
-	params  []ValueType
-	results [1]ValueType // has at most one element (before rolling support for multiple return types)
+	Params  []ValueType
+	Results [1]ValueType // has at most one element (before rolling support for multiple return types)
 }
 
 func (fs FunctionSig) Serialize() error { return nil }
@@ -60,13 +61,13 @@ func (fs *FunctionSig) Deserialize(reader *wasm_reader.WasmReader) error {
 		return err
 	}
 
-	fs.params = make([]ValueType, paramsLen, paramsLen)
+	fs.Params = make([]ValueType, paramsLen, paramsLen)
 	for i := 0; i < int(paramsLen); i++ {
 		valTyp, err := wbinary.ReadVarUint32(reader)
 		if err != nil {
 			return err
 		}
-		fs.params[i] = ValueType(valTyp)
+		fs.Params[i] = ValueType(valTyp)
 	}
 	resultsLen, err := wbinary.ReadVarUint32(reader)
 	if err != nil {
@@ -80,7 +81,7 @@ func (fs *FunctionSig) Deserialize(reader *wasm_reader.WasmReader) error {
 		if err != nil {
 			return err
 		}
-		fs.results[i] = ValueType(valTyp)
+		fs.Results[i] = ValueType(valTyp)
 	}
 	return nil
 }

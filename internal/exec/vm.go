@@ -3,6 +3,7 @@ package exec
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 	"github.com/threadedstream/wasmexperiments/internal/wasm"
 )
@@ -22,6 +23,7 @@ type context struct {
 type VM struct {
 	ctx       context
 	module    *wasm.Module
+	globals   []uint64
 	memory    []byte
 	funcs     []function
 	funcTable [256]func()
@@ -86,6 +88,28 @@ func (vm *VM) fetchInt32() int32 {
 	return int32(vm.fetchUint32())
 }
 
+func (vm *VM) getLocal() {
+	index := vm.fetchUint32()
+	vm.pushUint64(vm.ctx.locals[index])
+}
+
+func (vm *VM) setLocal() {
+	index := vm.fetchUint32()
+	value := vm.popUint64()
+	vm.ctx.locals[index] = value
+}
+
+func (vm *VM) getGlobal() {
+	index := vm.fetchUint32()
+	vm.pushUint64(vm.globals[index])
+}
+
+func (vm *VM) setGlobal() {
+	index := vm.fetchUint32()
+	value := vm.popUint64()
+	vm.globals[index] = value
+}
+
 func (vm *VM) PrintInstructionStream() (string, error) {
 	for _, _ = range vm.module.CodeSection.Entries {
 		// TODO
@@ -93,10 +117,17 @@ func (vm *VM) PrintInstructionStream() (string, error) {
 	return "", nil
 }
 
-func (vm *VM) ExecFunc(index int64, args uint64) (ret any, err error) {
+func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	// some validation of input parameters
 	if int(index) > len(vm.funcs) {
 		return nil, fmt.Errorf("attempting to call a function with an index %d with length of funcs being %d", index, len(vm.funcs))
+	}
+
+	// validate number of arguments
+	expectedArgsNum := len(vm.module.GetFunction(int(index)).Sig.Params)
+	actualArgsNum := len(args)
+	if actualArgsNum != expectedArgsNum {
+		return nil, fmt.Errorf("expected %d, got %d arguments", expectedArgsNum, actualArgsNum)
 	}
 
 	return nil, nil
