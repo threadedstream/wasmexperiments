@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
+	"os"
+
+	"github.com/threadedstream/wasmexperiments/internal/exec"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/wasm"
-	"os"
 )
 
 func main() {
@@ -22,4 +25,6 @@ func main() {
 	if err := module.Read(); err != nil {
 		reporter.ReportError(err.Error())
 	}
+	executor, err := exec.NewVM(module)
+	fmt.Printf("executor's address: %p", executor)
 }

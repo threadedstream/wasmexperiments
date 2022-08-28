@@ -2,6 +2,7 @@ package exec
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
@@ -27,6 +28,34 @@ type VM struct {
 	memory    []byte
 	funcs     []function
 	funcTable [256]func()
+
+	abort bool
+}
+
+func NewVM(m *wasm.Module) (*VM, error) {
+	vm := new(VM)
+
+	if m.MemorySection != nil && len(m.MemorySection.Entries) != 0 {
+		if len(m.MemorySection.Entries) > 1 {
+			return nil, errors.New("newVM: expected to have exactly one instance of memory")
+		}
+		vm.memory = make([]byte, m.MemorySection.Entries[0].Limits.Minimum*wasmPageSize)
+		fmt.Printf("##NewVM## Addr: %p, Len: %d\n", m.LinearMemoryIndexSpace, len(m.LinearMemoryIndexSpace))
+		copy(vm.memory, m.LinearMemoryIndexSpace[0])
+	}
+	vm.funcs = make([]function, len(m.FunctionIndexSpace))
+	vm.globals = make([]uint64, len(m.GlobalIndexSpace))
+
+	vm.module = m
+
+	if m.StartSection != nil {
+		_, err := vm.ExecFunc(int64(m.StartSection.Index))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return vm, nil
 }
 
 func (vm *VM) pushUint64(n uint64) {
@@ -134,5 +163,14 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 }
 
 func (vm *VM) execCode() any {
+	for int(vm.ctx.pc) < len(vm.ctx.code) && !vm.abort {
+		currPc := vm.ctx.pc
+		op := vm.ctx.code[currPc]
+		vm.ctx.pc++
+		if inst, ok := instructionMap[op]; ok {
+			println("known instruction: ", inst)
+		}
+	}
+
 	return nil
 }

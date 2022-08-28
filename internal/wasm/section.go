@@ -214,6 +214,27 @@ func (tk *TableKindDesc) Deserialize(reader *wasm_reader.WasmReader) error {
 type ResizableLimits struct {
 	Flags   uint32
 	Minimum uint32
+	Maximum uint32
+}
+
+func (_ ResizableLimits) Serialize() error { panic("unimplemented!") }
+
+func (rl *ResizableLimits) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	if rl.Flags, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+	if rl.Minimum, err = wbinary.ReadVarUint32(reader); err != nil {
+		return err
+	}
+
+	// see if 0x1 bit is set
+	if rl.Flags&0x1 != 0 {
+		if rl.Maximum, err = wbinary.ReadVarUint32(reader); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type MemoryKindDesc struct {
@@ -225,14 +246,7 @@ func (_ MemoryKindDesc) IsImportDesc() bool { return true }
 func (_ MemoryKindDesc) Serialize() error   { return nil }
 
 func (m *MemoryKindDesc) Deserialize(reader *wasm_reader.WasmReader) error {
-	var err error
-	if m.Limits.Flags, err = wbinary.ReadVarUint32(reader); err != nil {
-		return err
-	}
-	if m.Limits.Minimum, err = wbinary.ReadVarUint32(reader); err != nil {
-		return err
-	}
-	return nil
+	return m.Limits.Deserialize(reader)
 }
 
 type GlobalKindDesc struct {

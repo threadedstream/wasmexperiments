@@ -3,11 +3,13 @@ package wasm
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"io"
+	"reflect"
+
 	wr "github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
-	"io"
-	"reflect"
 )
 
 const (
@@ -20,6 +22,11 @@ type Function struct {
 	Body *FunctionBody
 	Host reflect.Value
 	Name string
+}
+
+type TableEntry struct {
+	Index       uint32
+	Initialized bool
 }
 
 func (fnc Function) IsHost() bool {
@@ -42,12 +49,19 @@ type Module struct {
 	wr              *wr.WasmReader
 
 	FunctionIndexSpace []*Function
+	GlobalIndexSpace   []*GlobalDecl
+
+	TableIndexSpace        [][]*TableEntry
+	LinearMemoryIndexSpace [][]byte
 }
 
 func NewModule(wr *wr.WasmReader) *Module {
-	return &Module{
-		wr: wr,
-	}
+	module := new(Module)
+	module.wr = wr
+
+	module.LinearMemoryIndexSpace = make([][]byte, 1)
+	fmt.Printf("##NewModule## Addr: %p, Len: %d\n", module.LinearMemoryIndexSpace, len(module.LinearMemoryIndexSpace))
+	return module
 }
 
 func (m *Module) Read() error {
@@ -70,6 +84,11 @@ func (m *Module) Read() error {
 	if err = m.readSections(); err != nil {
 		return err
 	}
+
+	if m.TableSection != nil {
+		m.TableIndexSpace = make([][]*TableEntry, len(m.TableSection.Entries))
+	}
+
 	return nil
 }
 
