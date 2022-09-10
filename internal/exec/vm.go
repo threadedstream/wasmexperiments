@@ -77,6 +77,16 @@ func (vm *VM) pushInt32(n int32) {
 	vm.pushUint64(uint64(n))
 }
 
+// pushZero is a pseudo-instruction, it has a practical utility in cmp instructions
+func (vm *VM) pushZero() {
+	vm.pushUint64(0)
+}
+
+// the same as pushZero
+func (vm *VM) pushOne() {
+	vm.pushUint64(1)
+}
+
 func (vm *VM) popUint64() uint64 {
 	if len(vm.ctx.stack) == 0 {
 		reporter.ReportError("popUint64: stack's empty")
