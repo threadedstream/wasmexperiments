@@ -149,6 +149,52 @@ func (vm *VM) i32TruncF32S() {
 }
 
 func (vm *VM) i32TruncF64S() {
+	target := float64(vm.popInt64())
+	vm.pushUint32(uint32(float32(target)))
+}
+
+func (vm *VM) i32TruncF32U() {
+	target := float32(vm.popUint64())
+	vm.pushUint32(uint32(target))
+}
+
+func (vm *VM) i32TruncF64U() {
 	target := float64(vm.popUint64())
 	vm.pushUint32(uint32(float32(target)))
+}
+
+func (vm *VM) f32DemoteF64() {
+	target := float64(vm.popUint64())
+	vm.pushUint32(uint32(float32(target)))
+}
+
+func (vm *VM) f64PromoteF32() {
+	target := float32(vm.popUint32())
+	vm.pushUint64(uint64(target))
+}
+
+func (vm *VM) f32ConvertI32S() {
+	target := float32(vm.popInt32())
+	vm.pushUint32(uint32(target))
+}
+
+func (vm *VM) f32ConvertI64S() {
+	target := vm.popInt64()
+	vm.pushUint32(uint32(float32(target)))
+}
+
+func (vm *VM) f32ConvertI32U() {
+	target := float32(vm.popUint32())
+	vm.pushUint32(uint32(target))
+}
+
+func (vm *VM) f32ConvertI64U() {
+	target := vm.popUint64()
+	vm.pushUint32(uint32(float32(target)))
+}
+
+func (vm *VM) f32ReinterpretI32() {
+	target := vm.popUint32()
+	reinterpreted := math.Float32frombits(target)
+	vm.pushUint32(uint32(reinterpreted))
 }

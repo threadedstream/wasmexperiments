@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
-	"reflect"
-
+	"github.com/threadedstream/wasmexperiments/internal/exec"
 	wr "github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
+	"io"
 )
 
 const (
@@ -17,20 +16,9 @@ const (
 	version     = 0x1
 )
 
-type Function struct {
-	Sig  *FunctionSig
-	Body *FunctionBody
-	Host reflect.Value
-	Name string
-}
-
 type TableEntry struct {
 	Index       uint32
 	Initialized bool
-}
-
-func (fnc Function) IsHost() bool {
-	return fnc.Host != reflect.Value{}
 }
 
 type Module struct {
@@ -48,7 +36,7 @@ type Module struct {
 	CustomSections  CustomSections
 	wr              *wr.WasmReader
 
-	FunctionIndexSpace []*Function
+	FunctionIndexSpace []*exec.Function
 	GlobalIndexSpace   []*GlobalDecl
 
 	TableIndexSpace        [][]*TableEntry

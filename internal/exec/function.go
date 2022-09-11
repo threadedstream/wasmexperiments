@@ -1,22 +1,23 @@
 package exec
 
-type function interface {
-	call(vm *VM, index int64)
+const (
+	// make an interpreter option?
+	maxDepth = 15
+)
+
+type Function struct {
+	numLocals int
+	numParams int
+	code      []byte
+	returns   bool
+	name      string
 }
 
-type compiledFunction struct {
-	code           []byte
-	maxDepth       int
-	totalLocalVars int
-	args           int
-	returns        bool
-}
+func (fn *Function) call(vm *VM, index int64) {
+	stack := make([]uint64, 0, maxDepth)
+	locals := make([]uint64, fn.numLocals)
 
-func (cf *compiledFunction) call(vm *VM, index int64) {
-	stack := make([]uint64, 0, cf.maxDepth+1)
-	locals := make([]uint64, cf.totalLocalVars)
-
-	for i := cf.args - 1; i > 0; i-- {
+	for i := fn.numParams - 1; i > 0; i-- {
 		locals[i] = vm.popUint64()
 	}
 
@@ -24,14 +25,14 @@ func (cf *compiledFunction) call(vm *VM, index int64) {
 	vm.ctx = context{
 		stack:   stack,
 		locals:  locals,
-		code:    cf.code,
+		code:    fn.code,
 		pc:      0,
 		curFunc: index,
 	}
 
 	ret := vm.execCode()
 	vm.ctx = prevCtx
-	if cf.returns {
+	if fn.returns {
 		vm.pushUint64(ret.(uint64))
 	}
 }

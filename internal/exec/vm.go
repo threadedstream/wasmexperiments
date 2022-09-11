@@ -26,7 +26,7 @@ type VM struct {
 	module    *wasm.Module
 	globals   []uint64
 	memory    []byte
-	funcs     []function
+	funcs     []Function
 	funcTable [256]func()
 
 	abort bool
@@ -43,10 +43,13 @@ func NewVM(m *wasm.Module) (*VM, error) {
 		fmt.Printf("##NewVM## Addr: %p, Len: %d\n", m.LinearMemoryIndexSpace, len(m.LinearMemoryIndexSpace))
 		copy(vm.memory, m.LinearMemoryIndexSpace[0])
 	}
-	vm.funcs = make([]function, len(m.FunctionIndexSpace))
 	vm.globals = make([]uint64, len(m.GlobalIndexSpace))
 
 	vm.module = m
+
+	// initialize function index space
+	fnIndexSpace := make([]*Function, 0, len(vm.module.FunctionSection.Indices))
+	vm.module.FunctionIndexSpace = fnIndexSpace
 
 	if m.StartSection != nil {
 		_, err := vm.ExecFunc(int64(m.StartSection.Index))
@@ -163,11 +166,11 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	}
 
 	// validate number of arguments
-	expectedArgsNum := len(vm.module.GetFunction(int(index)).Sig.Params)
-	actualArgsNum := len(args)
-	if actualArgsNum != expectedArgsNum {
-		return nil, fmt.Errorf("expected %d, got %d arguments", expectedArgsNum, actualArgsNum)
-	}
+	fn := vm.module.GetFunction(int(index))
+
+	// assuming it's already compiled, it's true though, we don't parse any frontend
+
+	fn.call(vm, index)
 
 	return nil, nil
 }
