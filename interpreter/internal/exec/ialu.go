@@ -2,8 +2,14 @@ package exec
 
 import (
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
+	"github.com/threadedstream/wasmexperiments/internal/types"
 	"math"
 	"math/bits"
+)
+
+var (
+	i32AddOp = NewInstr("i32.add", I32Add, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	callOp   = NewInstr("call", Call, []types.ValueType{types.ValueTypeI32}, []types.ValueType{})
 )
 
 func (vm *VM) i32Clz() {

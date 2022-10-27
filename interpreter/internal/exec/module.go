@@ -1,10 +1,9 @@
-package wasm
+package exec
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/threadedstream/wasmexperiments/internal/exec"
 	wr "github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
@@ -36,7 +35,7 @@ type Module struct {
 	CustomSections  CustomSections
 	wr              *wr.WasmReader
 
-	FunctionIndexSpace []*exec.Function
+	FunctionIndexSpace []*Function
 	GlobalIndexSpace   []*GlobalDecl
 
 	TableIndexSpace        [][]*TableEntry
@@ -77,7 +76,41 @@ func (m *Module) Read() error {
 		m.TableIndexSpace = make([][]*TableEntry, len(m.TableSection.Entries))
 	}
 
+	if m.FunctionIndexSpace == nil {
+		m.initializeFunctionIndexSpace()
+	}
+
 	return nil
+}
+
+func (m *Module) initializeFunctionIndexSpace() {
+	requiredLen := 0
+	if m.FunctionSection != nil {
+		requiredLen += len(m.FunctionSection.Indices)
+	}
+
+	if m.ImportSection != nil {
+		requiredLen += len(m.ImportSection.Entries)
+	}
+
+	m.FunctionIndexSpace = make([]*Function, requiredLen)
+	if m.ImportSection != nil {
+		for i := 0; i < len(m.ImportSection.Entries); i++ {
+			m.FunctionIndexSpace[i] = &Function{
+				code: m.CodeSection.Entries[i].Code,
+				name: m.ImportSection.Entries[i].ExportName,
+			}
+		}
+	}
+
+	if m.FunctionSection != nil {
+		for _, idx := range m.FunctionSection.Indices {
+			m.FunctionIndexSpace[idx] = &Function{
+				code: m.CodeSection.Entries[idx].Code,
+				name: "",
+			}
+		}
+	}
 }
 
 func (m *Module) readSections() error {

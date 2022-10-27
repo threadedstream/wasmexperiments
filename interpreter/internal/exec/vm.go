@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
-	"github.com/threadedstream/wasmexperiments/internal/wasm"
 )
 
 const (
@@ -23,7 +22,7 @@ type context struct {
 
 type VM struct {
 	ctx       context
-	module    *wasm.Module
+	module    *Module
 	globals   []uint64
 	memory    []byte
 	funcs     []Function
@@ -32,7 +31,7 @@ type VM struct {
 	abort bool
 }
 
-func NewVM(m *wasm.Module) (*VM, error) {
+func NewVM(m *Module) (*VM, error) {
 	vm := new(VM)
 
 	if m.MemorySection != nil && len(m.MemorySection.Entries) != 0 {
@@ -47,12 +46,14 @@ func NewVM(m *wasm.Module) (*VM, error) {
 
 	vm.module = m
 
-	// initialize function index space
-	fnIndexSpace := make([]*Function, 0, len(vm.module.FunctionSection.Indices))
-	vm.module.FunctionIndexSpace = fnIndexSpace
-
 	if m.StartSection != nil {
 		_, err := vm.ExecFunc(int64(m.StartSection.Index))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// default to executing zeroth function
+		_, err := vm.ExecFunc(0)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +81,7 @@ func (vm *VM) pushInt32(n int32) {
 	vm.pushUint64(uint64(n))
 }
 
-// pushZero is a pseudo-instruction, it has a practical utility in cmp instructions
+// pushZero is a pseudo-instruction, it has a practical utility in cmp instruction
 func (vm *VM) pushZero() {
 	vm.pushUint64(0)
 }
@@ -176,14 +177,9 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 }
 
 func (vm *VM) execCode() any {
-	for int(vm.ctx.pc) < len(vm.ctx.code) && !vm.abort {
-		currPc := vm.ctx.pc
-		op := vm.ctx.code[currPc]
-		vm.ctx.pc++
-		if inst, ok := instructionMap[op]; ok {
-			println("known instruction: ", inst)
-		}
-	}
+	startIndex := vm.module.StartSection.Index
+	fn := vm.module.GetFunction(int(startIndex))
 
+	fn.call(vm, int64(startIndex))
 	return nil
 }

@@ -1,4 +1,4 @@
-package wasm
+package types
 
 import "github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 
@@ -22,7 +22,8 @@ var (
 	}
 )
 
-func (v ValueType) String() string   { return vtmap[v] }
+func (v ValueType) String() string { return vtmap[v] }
+
 func (_ ValueType) Serialize() error { return nil }
 
 func (v *ValueType) Deserialize(reader *wasm_reader.WasmReader) error {

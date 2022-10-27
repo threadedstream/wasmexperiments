@@ -1,12 +1,13 @@
-package wasm
+package exec
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
-	"io"
 )
 
 const (

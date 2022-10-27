@@ -30,9 +30,30 @@ func (fn *Function) call(vm *VM, index int64) {
 		curFunc: index,
 	}
 
-	ret := vm.execCode()
+	ret := fn.execCode(vm)
 	vm.ctx = prevCtx
 	if fn.returns {
 		vm.pushUint64(ret.(uint64))
 	}
+}
+
+func (fn *Function) execCode(vm *VM) any {
+	code := vm.ctx.code
+	currOff := int(vm.ctx.pc)
+	endOff := len(code)
+	for currOff < endOff {
+		switch Bytecode(code[currOff]) {
+		case I32Add:
+			vm.i32Add()
+		case Call:
+			vm.call()
+		case LocalGet:
+			vm.getLocal()
+		}
+		currOff++
+	}
+	if len(vm.ctx.stack) != 0 {
+		return vm.popUint32()
+	}
+	return nil
 }

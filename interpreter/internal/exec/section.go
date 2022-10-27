@@ -1,4 +1,4 @@
-package wasm
+package exec
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
+	"github.com/threadedstream/wasmexperiments/internal/types"
 )
 
 type SectionID uint
@@ -39,8 +40,8 @@ type Validatable interface {
 }
 
 type FunctionSig struct {
-	Params  []ValueType
-	Results [1]ValueType // has at most one element (before rolling support for multiple return types)
+	Params  []types.ValueType
+	Results [1]types.ValueType // has at most one element (before rolling support for multiple return types)
 }
 
 func (fs FunctionSig) Serialize() error { return nil }
@@ -51,7 +52,7 @@ func (fs *FunctionSig) Deserialize(reader *wasm_reader.WasmReader) error {
 	if err != nil {
 		return err
 	}
-	if valType != ValueTypeFunc {
+	if valType != types.ValueTypeFunc {
 		return errors.New("readTypeSection: value type must be a function")
 	}
 
@@ -61,13 +62,13 @@ func (fs *FunctionSig) Deserialize(reader *wasm_reader.WasmReader) error {
 		return err
 	}
 
-	fs.Params = make([]ValueType, paramsLen, paramsLen)
+	fs.Params = make([]types.ValueType, paramsLen, paramsLen)
 	for i := 0; i < int(paramsLen); i++ {
 		valTyp, err := wbinary.ReadVarUint32(reader)
 		if err != nil {
 			return err
 		}
-		fs.Params[i] = ValueType(valTyp)
+		fs.Params[i] = types.ValueType(valTyp)
 	}
 	resultsLen, err := wbinary.ReadVarUint32(reader)
 	if err != nil {
@@ -81,7 +82,7 @@ func (fs *FunctionSig) Deserialize(reader *wasm_reader.WasmReader) error {
 		if err != nil {
 			return err
 		}
-		fs.Results[i] = ValueType(valTyp)
+		fs.Results[i] = types.ValueType(valTyp)
 	}
 	return nil
 }
@@ -250,7 +251,7 @@ func (m *MemoryKindDesc) Deserialize(reader *wasm_reader.WasmReader) error {
 }
 
 type GlobalKindDesc struct {
-	Type    ValueType
+	Type    types.ValueType
 	Mutable bool
 }
 
@@ -592,7 +593,7 @@ func (e *ElementSection) Deserialize(reader *wasm_reader.WasmReader) error {
 
 type LocalEntry struct {
 	Count uint32
-	Type  ValueType
+	Type  types.ValueType
 }
 
 func (_ LocalEntry) Serialize() error { return nil }

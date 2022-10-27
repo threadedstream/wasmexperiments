@@ -9,7 +9,6 @@ import (
 	"github.com/threadedstream/wasmexperiments/internal/exec"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
-	"github.com/threadedstream/wasmexperiments/internal/wasm"
 )
 
 func main() {
@@ -21,7 +20,7 @@ func main() {
 	}
 	r := bytes.NewReader(bs)
 	wr := wasm_reader.NewWasmReader(r)
-	module := wasm.NewModule(wr)
+	module := exec.NewModule(wr)
 	if err := module.Read(); err != nil {
 		reporter.ReportError(err.Error())
 	}
