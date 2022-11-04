@@ -31,4 +31,5 @@ I decided to make it my university research project, so it means rendering this 
 [A fast in-place interpreter for WebAssembly](https://arxiv.org/pdf/2205.01183.pdf)\
 [WebAssembly: The Definitive Guide](https://www.oreilly.com/library/view/webassembly-the-definitive/9781492089834)\
 [WASM opcode table](https://pengowray.github.io/wasm-ops/)\
-[wazero Runtime](https://github.com/tetratelabs/wazero)
+[wazero Runtime](https://github.com/tetratelabs/wazero)\
+[My reference WASM manual](https://github.com/sunfishcode/wasm-reference-manual)
