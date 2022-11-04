@@ -5,4 +5,5 @@
             (local.get $y)
         )
     )
+	(export "add" (func $add))
 )

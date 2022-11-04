@@ -13,7 +13,7 @@ type Function struct {
 	name      string
 }
 
-func (fn *Function) call(vm *VM, index int64) {
+func (fn *Function) call(vm *VM, index int64) error {
 	stack := make([]uint64, 0, maxDepth)
 	locals := make([]uint64, fn.numLocals)
 
@@ -21,11 +21,17 @@ func (fn *Function) call(vm *VM, index int64) {
 		locals[i] = vm.popUint64()
 	}
 
+	disasmedCode, err := Disassemble(fn.code)
+	if err != nil {
+		return err
+	}
+	Dump(disasmedCode)
+	compiledCode, _ := Compile(disasmedCode)
 	prevCtx := vm.ctx
 	vm.ctx = context{
 		stack:   stack,
 		locals:  locals,
-		code:    fn.code,
+		code:    compiledCode,
 		pc:      0,
 		curFunc: index,
 	}
@@ -35,6 +41,8 @@ func (fn *Function) call(vm *VM, index int64) {
 	if fn.returns {
 		vm.pushUint64(ret.(uint64))
 	}
+
+	return nil
 }
 
 func (fn *Function) execCode(vm *VM) any {
@@ -43,11 +51,12 @@ func (fn *Function) execCode(vm *VM) any {
 	endOff := len(code)
 	for currOff < endOff {
 		switch Bytecode(code[currOff]) {
-		case I32Add:
+		case i32AddOp:
 			vm.i32Add()
-		case Call:
+		case callOp:
 			vm.call()
-		case LocalGet:
+		case localGetOp:
+			vm.ctx.pc++
 			vm.getLocal()
 		}
 		currOff++

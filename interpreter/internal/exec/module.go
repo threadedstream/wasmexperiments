@@ -8,6 +8,7 @@ import (
 	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
 	"io"
+	"os"
 )
 
 const (
@@ -42,13 +43,18 @@ type Module struct {
 	LinearMemoryIndexSpace [][]byte
 }
 
-func NewModule(wr *wr.WasmReader) *Module {
+func NewModule(path string) (*Module, error) {
 	module := new(Module)
-	module.wr = wr
+	bs, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	r := bytes.NewReader(bs)
+	module.wr = wr.NewWasmReader(r)
 
 	module.LinearMemoryIndexSpace = make([][]byte, 1)
-	fmt.Printf("##NewModule## Addr: %p, Len: %d\n", module.LinearMemoryIndexSpace, len(module.LinearMemoryIndexSpace))
-	return module
+	fmt.Printf("-+-NewModule-+- Addr: %p, Len: %d\n", module.LinearMemoryIndexSpace, len(module.LinearMemoryIndexSpace))
+	return module, nil
 }
 
 func (m *Module) Read() error {

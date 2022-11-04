@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	i32AddOp = NewInstr("i32.add", I32Add, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	callOp   = NewInstr("call", Call, []types.ValueType{types.ValueTypeI32}, []types.ValueType{})
+	i32AddOp = newOp("i32.add", 0x6A, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	callOp   = newOp("call", 0x10, []types.ValueType{types.ValueTypeI32}, []types.ValueType{})
+	endOp    = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
 )
 
 func (vm *VM) i32Clz() {

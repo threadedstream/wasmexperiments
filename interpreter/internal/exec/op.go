@@ -7,35 +7,64 @@ import (
 
 type Bytecode byte
 
-const (
-	I32Add   Bytecode = 0x6A
-	Call              = 0x10
-	LocalGet          = 0x20
-)
-
 var (
-	instrLookup = make(map[Bytecode]*Instr)
+	codeLookup = make(map[Bytecode]Op)
+	invalidOp  = Op{IsInvalid: true}
 )
 
-type Instr struct {
+type Op struct {
 	Name        string
 	Code        Bytecode
+	Vararg      bool
 	InputTypes  []types.ValueType
 	OutputTypes []types.ValueType
+	IsInvalid   bool
 }
 
-func NewInstr(name string, code Bytecode, inputTypes []types.ValueType, outputTypes []types.ValueType) *Instr {
-	if _, ok := instrLookup[code]; ok {
-		log.Panic("instruction already registered")
+//go:inline
+func (op Op) IsValid() bool {
+	return op.IsInvalid == false
+}
+
+//go:inline
+func newInvalidOp() Op {
+	return invalidOp
+}
+
+func newOp(name string, code Bytecode, inputTypes []types.ValueType, outputTypes []types.ValueType) Bytecode {
+	if _, ok := codeLookup[code]; ok {
+		log.Panicf("instruction %#x already registered", code)
 	}
-	i := &Instr{
+	i := Op{
 		Name:        name,
 		Code:        code,
 		InputTypes:  inputTypes,
 		OutputTypes: outputTypes,
 	}
-	instrLookup[code] = i
-	return i
+	codeLookup[code] = i
+	return code
+}
+
+func newVarargOp(name string, code Bytecode) Bytecode {
+	if _, ok := codeLookup[code]; ok {
+		log.Panicf("instruction %#x already registered", code)
+	}
+
+	i := Op{
+		Name:   name,
+		Code:   code,
+		Vararg: true,
+	}
+
+	codeLookup[code] = i
+	return code
+}
+
+func lookupOp(code Bytecode) Op {
+	if op, ok := codeLookup[code]; ok {
+		return op
+	}
+	return newInvalidOp()
 }
 
 //// branch instruction
@@ -105,7 +134,7 @@ func NewInstr(name string, code Bytecode, inputTypes []types.ValueType, outputTy
 //}
 //
 //const (
-////go:generate stringer -type Instruction -linecomment instruction.go
+////go:generate stringer -type Instruction -linecomment op.go
 //	iBlock        byte = 0x02
 //	iLoop              = 0x03
 //	iBr                = 0x0c

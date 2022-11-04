@@ -13,6 +13,10 @@ const (
 )
 
 var (
+	ValueTypeEmpty = []ValueType{0x0}
+)
+
+var (
 	vtmap = map[ValueType]string{
 		ValueTypeI32:  "i32",
 		ValueTypeI64:  "i64",
