@@ -42,6 +42,11 @@ func NewVM(m *Module) (*VM, error) {
 		fmt.Printf("##NewVM## Addr: %p, Len: %d\n", m.LinearMemoryIndexSpace, len(m.LinearMemoryIndexSpace))
 		copy(vm.memory, m.LinearMemoryIndexSpace[0])
 	}
+
+	if m.FunctionIndexSpace == nil {
+		m.initializeFunctionIndexSpace()
+	}
+
 	vm.globals = make([]uint64, len(m.GlobalIndexSpace))
 
 	vm.module = m
@@ -55,12 +60,6 @@ func NewVM(m *Module) (*VM, error) {
 
 	if m.StartSection != nil {
 		_, err := vm.ExecFunc(int64(m.StartSection.Index))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// default to executing zeroth function
-		_, err := vm.ExecFunc(0)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +102,9 @@ func (vm *VM) popUint64() uint64 {
 		reporter.ReportError("popUint64: stack's empty")
 	}
 	idx := len(vm.ctx.stack) - 1
-	return vm.ctx.stack[idx]
+	val := vm.ctx.stack[idx]
+	vm.ctx.stack = vm.ctx.stack[:idx]
+	return val
 }
 
 func (vm *VM) popInt64() int64 {
@@ -138,14 +139,7 @@ func (vm *VM) fetchInt32() int32 {
 	return int32(vm.fetchUint32())
 }
 
-func (vm *VM) PrintInstructionStream() (string, error) {
-	for _, _ = range vm.module.CodeSection.Entries {
-		// TODO
-	}
-	return "", nil
-}
-
-func (vm *VM) ExecFunc(index int64) (ret any, err error) {
+func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	// some validation of input parameters
 	if int(index) > len(vm.funcs) {
 		return nil, fmt.Errorf("attempting to call a function with an index %d with length of funcs being %d", index, len(vm.funcs))
@@ -156,9 +150,7 @@ func (vm *VM) ExecFunc(index int64) (ret any, err error) {
 
 	// assuming it's already compiled, it's true though, we don't parse any frontend
 
-	fn.call(vm, index)
-
-	return nil, nil
+	return fn.call(vm, index, args...)
 }
 
 func (vm *VM) execCode() any {

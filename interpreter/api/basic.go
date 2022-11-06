@@ -27,5 +27,5 @@ func (api *WasmApi) Call(name string, args ...uint64) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return api.vm.ExecFunc(int64(index))
+	return api.vm.ExecFunc(int64(index), args...)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/threadedstream/wasmexperiments/api"
 	"log"
 	"os"
@@ -16,5 +17,5 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	println("Result is ", res)
+	fmt.Printf("Result is %v", res)
 }

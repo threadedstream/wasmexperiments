@@ -52,7 +52,12 @@ func NewModule(path string) (*Module, error) {
 	r := bytes.NewReader(bs)
 	module.wr = wr.NewWasmReader(r)
 
+	if err = module.Read(); err != nil {
+		return nil, err
+	}
+
 	module.LinearMemoryIndexSpace = make([][]byte, 1)
+
 	fmt.Printf("-+-NewModule-+- Addr: %p, Len: %d\n", module.LinearMemoryIndexSpace, len(module.LinearMemoryIndexSpace))
 	return module, nil
 }
@@ -82,10 +87,6 @@ func (m *Module) Read() error {
 		m.TableIndexSpace = make([][]*TableEntry, len(m.TableSection.Entries))
 	}
 
-	if m.FunctionIndexSpace == nil {
-		m.initializeFunctionIndexSpace()
-	}
-
 	return nil
 }
 
@@ -103,8 +104,10 @@ func (m *Module) initializeFunctionIndexSpace() {
 	if m.ImportSection != nil {
 		for i := 0; i < len(m.ImportSection.Entries); i++ {
 			m.FunctionIndexSpace[i] = &Function{
-				code: m.CodeSection.Entries[i].Code,
-				name: m.ImportSection.Entries[i].ExportName,
+				code:      m.CodeSection.Entries[i].Code,
+				name:      m.ImportSection.Entries[i].ExportName,
+				numParams: len(m.TypesSection.sigs[i].Params),
+				returns:   m.TypesSection.sigs[i].Results[0] != 0,
 			}
 		}
 	}
@@ -112,8 +115,10 @@ func (m *Module) initializeFunctionIndexSpace() {
 	if m.FunctionSection != nil {
 		for _, idx := range m.FunctionSection.Indices {
 			m.FunctionIndexSpace[idx] = &Function{
-				code: m.CodeSection.Entries[idx].Code,
-				name: "",
+				code:      m.CodeSection.Entries[idx].Code,
+				name:      "",
+				numParams: len(m.TypesSection.sigs[idx].Params),
+				returns:   m.TypesSection.sigs[idx].Results[0] != 0,
 			}
 		}
 	}
