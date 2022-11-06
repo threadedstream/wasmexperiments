@@ -20,7 +20,7 @@ func main() {
 	defer r.Close(ctx)
 
 	_, err := r.NewHostModuleBuilder("env").
-		ExportFunction("log", logString).
+		NewFunctionBuilder().WithFunc(logString).Export("log").
 		Instantiate(ctx, r)
 	if err != nil {
 		log.Panicln(err)
