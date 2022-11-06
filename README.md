@@ -18,10 +18,10 @@ and hopefully make something good out of it.
 
 ### Instructions
 - [ ] Define all existing instructions in an informative way (its name, number of input params)
-- [ ] Dump module's code in the form of bytecode instructions (sort of debug function)
+- [x] Dump module's code in the form of bytecode instructions (sort of debug function)
 
 ### Basic interpretation
-- [ ] Write a basic wasm interpreter that interprets addition program
+- [x] Write a basic wasm interpreter that interprets addition program
 
 ### Update 
 I decided to make it my university research project, so it means rendering this project alive again! Currently, I'm actively involved in comprehending insides of WASM by means of tinkering with [my fork of wagon interpreter](https://github.com/threadedstream/wagon). 
