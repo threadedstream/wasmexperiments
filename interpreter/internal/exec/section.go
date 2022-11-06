@@ -728,14 +728,30 @@ func (d *DataSection) Deserialize(reader *wasm_reader.WasmReader) error {
 	return nil
 }
 
-type CustomSection struct {
+type CustomSection interface {
+	Name() string
+	Serializer
+}
+
+type NameSection struct {
+	Entries []NameEntry
 }
 
 type CustomSections []*CustomSection
 
-func (_ CustomSection) IsSection() bool  { return true }
-func (_ CustomSection) Serialize() error { return nil }
+func (_ NameSection) IsSection() bool  { return true }
+func (_ NameSection) Serialize() error { return nil }
 
-func (c *CustomSection) Deserialize(reader *wasm_reader.WasmReader) error {
+func (c NameSection) Name() string {
+	return "name"
+}
+
+func (c NameSection) Deserialize(reader *wasm_reader.WasmReader) error {
 	return nil
+}
+
+type NameEntry struct {
+	Type        int
+	PayloadLen  int
+	PayloadData []byte
 }

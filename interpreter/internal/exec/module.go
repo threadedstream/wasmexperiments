@@ -9,11 +9,17 @@ import (
 	"github.com/threadedstream/wasmexperiments/internal/pkg/werrors"
 	"io"
 	"os"
+	"sync"
 )
 
 const (
 	magicCookie = 0x6d736100
 	version     = 0x1
+)
+
+var (
+	// according to spec, name section is read only once
+	nameSectionOnce = sync.Once{}
 )
 
 type TableEntry struct {
@@ -127,6 +133,7 @@ func (m *Module) initializeFunctionIndexSpace() {
 func (m *Module) readSections() error {
 	// types section
 	sectionHandlers := map[SectionID]func() error{
+		CustomSectionID:       m.readCustomSection,
 		TypeSectionID:         m.readTypeSection,
 		ImportSectionID:       m.readImportSection,
 		FunctionSectionID:     m.readFunctionSection,
@@ -195,6 +202,24 @@ func (m *Module) validateSectionID(expected SectionID) error {
 		return werrors.ErrInvalidSectionID
 	}
 
+	return nil
+}
+
+func (m *Module) readCustomSection() error {
+	cs := new(CustomSection)
+	name, err := wbinary.ReadUTF8StringUint(m.wr)
+	if err != nil {
+		return err
+	}
+	switch name {
+	case "name":
+		// relax requirement that name section must be preceded by data section for now
+		nms := new(NameSection)
+		if err = nms.Deserialize(m.wr); err != nil {
+			return err
+		}
+	}
+	m.CustomSections = append(m.CustomSections, cs)
 	return nil
 }
 

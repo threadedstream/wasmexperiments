@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/threadedstream/wasmexperiments/api"
 	"log"
 	"os"
+
+	"github.com/threadedstream/wasmexperiments/api"
 )
 
 func main() {
