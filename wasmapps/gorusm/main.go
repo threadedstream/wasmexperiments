@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-//go:embed testdata/dummywasm/target/wasm32-unknown-unknown/debug/dummywasm.wasm
+//go:embed testdata/index.wasm
 var greetWasm []byte
 
 func main() {

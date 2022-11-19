@@ -213,16 +213,16 @@ func (tk *TableKindDesc) Deserialize(reader *wasm_reader.WasmReader) error {
 }
 
 type ResizableLimits struct {
-	Flags   uint32
+	Flags   uint8
 	Minimum uint32
-	Maximum uint32
+	Maximum *uint32
 }
 
 func (_ ResizableLimits) Serialize() error { panic("unimplemented!") }
 
 func (rl *ResizableLimits) Deserialize(reader *wasm_reader.WasmReader) error {
 	var err error
-	if rl.Flags, err = wbinary.ReadVarUint32(reader); err != nil {
+	if rl.Flags, err = reader.ReadByte(); err != nil {
 		return err
 	}
 	if rl.Minimum, err = wbinary.ReadVarUint32(reader); err != nil {
@@ -231,9 +231,11 @@ func (rl *ResizableLimits) Deserialize(reader *wasm_reader.WasmReader) error {
 
 	// see if 0x1 bit is set
 	if rl.Flags&0x1 != 0 {
-		if rl.Maximum, err = wbinary.ReadVarUint32(reader); err != nil {
-			return err
+		max, e := wbinary.ReadVarUint32(reader)
+		if e != nil {
+			return e
 		}
+		rl.Maximum = &max
 	}
 	return nil
 }
@@ -734,7 +736,10 @@ type CustomSection interface {
 }
 
 type NameSection struct {
-	Entries []NameEntry
+	Type        byte
+	PayloadLen  uint32
+	PayloadData []byte
+	NameInfo    any
 }
 
 type CustomSections []*CustomSection
@@ -746,12 +751,110 @@ func (c NameSection) Name() string {
 	return "name"
 }
 
-func (c NameSection) Deserialize(reader *wasm_reader.WasmReader) error {
+func (c *NameSection) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	c.Type, err = reader.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	c.PayloadLen, err = wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+
+	c.PayloadData, err = reader.ReadBytes(int(c.PayloadLen))
+	if err != nil {
+		return err
+	}
+
+	reader.Push(bytes.NewBuffer(c.PayloadData))
+	switch c.Type {
+	case 0:
+		var moduleName ModuleName
+		if err = moduleName.Deserialize(reader); err != nil {
+			return err
+		}
+		c.NameInfo = &moduleName
+	case 1:
+		var nameMap NameMap
+		if err = nameMap.Deserialize(reader); err != nil {
+			return err
+		}
+		c.NameInfo = &nameMap
+	}
+
+	reader.Pop()
 	return nil
 }
 
-type NameEntry struct {
-	Type        int
-	PayloadLen  int
-	PayloadData []byte
+type NameMap struct {
+	Count uint32
+	Names []Naming
+}
+
+func (nm *NameMap) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	nm.Count, err = wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+	nm.Names = make([]Naming, 0, nm.Count)
+	for i := 0; i < int(nm.Count); i++ {
+		var name Naming
+		if err = name.Deserialize(reader); err != nil {
+			return err
+		}
+		nm.Names = append(nm.Names, name)
+	}
+
+	return nil
+}
+
+type ModuleName struct {
+	NameLen uint32
+	NameStr string
+}
+
+func (mn *ModuleName) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	mn.NameLen, err = wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+
+	nameBytes, err := reader.ReadBytes(int(mn.NameLen))
+	if err != nil {
+		return err
+	}
+	mn.NameStr = string(nameBytes)
+
+	return nil
+}
+
+type Naming struct {
+	Index   uint32
+	NameLen uint32
+	NameStr string
+}
+
+func (n *Naming) Deserialize(reader *wasm_reader.WasmReader) error {
+	var err error
+	n.Index, err = wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+
+	n.NameLen, err = wbinary.ReadVarUint32(reader)
+	if err != nil {
+		return err
+	}
+
+	nameBytes, err := reader.ReadBytes(int(n.NameLen))
+	if err != nil {
+		return err
+	}
+	n.NameStr = string(nameBytes)
+
+	return nil
 }

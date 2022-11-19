@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 )
@@ -137,6 +138,14 @@ func (vm *VM) fetchUint32() uint32 {
 
 func (vm *VM) fetchInt32() int32 {
 	return int32(vm.fetchUint32())
+}
+
+func (vm *VM) pushFloat32(v float32) {
+	vm.pushUint32(uint32(v))
+}
+
+func (vm *VM) popFloat32() float32 {
+	return math.Float32frombits(vm.popUint32())
 }
 
 func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {

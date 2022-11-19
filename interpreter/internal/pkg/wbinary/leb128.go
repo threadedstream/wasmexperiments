@@ -69,6 +69,11 @@ func readVarUint(wr *wasm_reader.WasmReader, n int) (uint64, error) {
 	}
 }
 
+func ReadVarUint7(wr *wasm_reader.WasmReader) (uint8, error) {
+	val, err := readVarUint(wr, 7)
+	return uint8(val), err
+}
+
 func ReadVarUint32(wr *wasm_reader.WasmReader) (uint32, error) {
 	val, err := readVarUint(wr, 32)
 	return uint32(val), err

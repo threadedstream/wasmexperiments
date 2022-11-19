@@ -65,6 +65,20 @@ func (fn *Function) execCode(vm *VM) any {
 		case i32AddOp:
 			vm.i32Add()
 			vm.ctx.pc++
+		case i32SubOp:
+			vm.i32Sub()
+			vm.ctx.pc++
+		case i32MulOp:
+			vm.i32Mul()
+			vm.ctx.pc++
+		case i32DivUOp:
+			vm.i32DivU()
+			vm.ctx.pc++
+		case i32DivSOp:
+			vm.i32DivS()
+			vm.ctx.pc++
+		case i32LoadOp:
+
 		case callOp:
 			vm.call()
 		case localGetOp:

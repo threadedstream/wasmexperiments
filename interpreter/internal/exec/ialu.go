@@ -8,15 +8,15 @@ import (
 )
 
 var (
-	i32AddOp = newOp("i32.add", 0x6A, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32SubOp = newOp("i32.sub", 0x6B, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32MulOp = newOp("i32.mul", 0x6C, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32DivS  = newOp("i32.div_s", 0x6D, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32DivU  = newOp("i32.div_u", 0x6E, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32RemS  = newOp("i32.rem_s", 0x6F, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32RemU  = newOp("i32.rem_u", 0x70, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	callOp   = newOp("call", 0x10, []types.ValueType{types.ValueTypeI32}, []types.ValueType{})
-	endOp    = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
+	i32AddOp  = newOp("i32.add", 0x6A, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	i32SubOp  = newOp("i32.sub", 0x6B, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	i32MulOp  = newOp("i32.mul", 0x6C, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	i32DivSOp = newOp("i32.div_s", 0x6D, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	i32DivUOp = newOp("i32.div_u", 0x6E, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	i32RemSOp = newOp("i32.rem_s", 0x6F, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	i32RemUOp = newOp("i32.rem_u", 0x70, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
+	callOp    = newOp("call", 0x10, []types.ValueType{types.ValueTypeI32}, []types.ValueType{})
+	endOp     = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
 )
 
 func (vm *VM) i32Clz() {
