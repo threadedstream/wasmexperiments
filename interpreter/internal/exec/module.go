@@ -96,40 +96,6 @@ func (m *Module) Read() error {
 	return nil
 }
 
-func (m *Module) initializeFunctionIndexSpace() {
-	requiredLen := 0
-	if m.FunctionSection != nil {
-		requiredLen += len(m.FunctionSection.Indices)
-	}
-
-	if m.ImportSection != nil {
-		requiredLen += len(m.ImportSection.Entries)
-	}
-
-	m.FunctionIndexSpace = make([]*Function, requiredLen)
-	if m.ImportSection != nil {
-		for i := 0; i < len(m.ImportSection.Entries); i++ {
-			m.FunctionIndexSpace[i] = &Function{
-				code:      m.CodeSection.Entries[i].Code,
-				name:      m.ImportSection.Entries[i].ExportName,
-				numParams: len(m.TypesSection.sigs[i].Params),
-				returns:   m.TypesSection.sigs[i].Results[0] != 0,
-			}
-		}
-	}
-
-	if m.FunctionSection != nil {
-		for _, idx := range m.FunctionSection.Indices {
-			m.FunctionIndexSpace[idx] = &Function{
-				code:      m.CodeSection.Entries[idx].Code,
-				name:      "",
-				numParams: len(m.TypesSection.sigs[idx].Params),
-				returns:   m.TypesSection.sigs[idx].Results[0] != 0,
-			}
-		}
-	}
-}
-
 func (m *Module) readSections() error {
 	// types section
 	sectionHandlers := map[SectionID]func() error{

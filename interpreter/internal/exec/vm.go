@@ -1,12 +1,8 @@
 package exec
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
-
-	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 )
 
 const (
@@ -27,7 +23,7 @@ type VM struct {
 	globals   []uint64
 	memory    []byte
 	funcs     []Function
-	funcTable [256]func()
+	funcTable map[Bytecode]func()
 	// for quick querying
 	funcMap map[string]uint32
 }
@@ -69,83 +65,30 @@ func NewVM(m *Module) (*VM, error) {
 	return vm, nil
 }
 
-func (vm *VM) pushUint64(n uint64) {
-	if len(vm.ctx.stack) >= cap(vm.ctx.stack) {
-		reporter.ReportError("stack exceeding max depth: len=%d,cap=%d", len(vm.ctx.stack), cap(vm.ctx.stack))
+func (vm *VM) initFuncTable() {
+	if vm.funcTable == nil {
+		vm.funcTable = map[Bytecode]func(){
+			i32AddOp:    vm.i32Add,
+			i32SubOp:    vm.i32Sub,
+			i32MulOp:    vm.i32Mul,
+			i32DivSOp:   vm.i32DivS,
+			i32DivUOp:   vm.i32DivU,
+			i32RemSOp:   vm.i32RemS,
+			i32RemUOp:   vm.i32RemU,
+			f32AddOp:    vm.f32Add,
+			f32SubOp:    vm.f32Sub,
+			f32MulOp:    vm.f32Mul,
+			callOp:      vm.call,
+			localGetOp:  vm.getLocal,
+			localSetOp:  vm.setLocal,
+			globalGetOp: vm.getGlobal,
+			globalSetOp: vm.setGlobal,
+			i32LoadOp:   vm.i32Load,
+			f32LoadOp:   vm.f32Load,
+			i32StoreOp:  vm.i32Store,
+			f32StoreOp:  vm.f32Store,
+		}
 	}
-	vm.ctx.stack = append(vm.ctx.stack, n)
-}
-
-func (vm *VM) pushInt64(n int64) {
-	vm.pushUint64(uint64(n))
-}
-
-func (vm *VM) pushUint32(n uint32) {
-	vm.pushUint64(uint64(n))
-}
-
-func (vm *VM) pushInt32(n int32) {
-	vm.pushUint64(uint64(n))
-}
-
-// pushZero is a pseudo-instruction, it has a practical utility in cmp instruction
-func (vm *VM) pushZero() {
-	vm.pushUint64(0)
-}
-
-// the same as pushZero
-func (vm *VM) pushOne() {
-	vm.pushUint64(1)
-}
-
-func (vm *VM) popUint64() uint64 {
-	if len(vm.ctx.stack) == 0 {
-		reporter.ReportError("popUint64: stack's empty")
-	}
-	idx := len(vm.ctx.stack) - 1
-	val := vm.ctx.stack[idx]
-	vm.ctx.stack = vm.ctx.stack[:idx]
-	return val
-}
-
-func (vm *VM) popInt64() int64 {
-	return int64(vm.popUint64())
-}
-
-func (vm *VM) popUint32() uint32 {
-	return uint32(vm.popUint64())
-}
-
-func (vm *VM) popInt32() int32 {
-	return int32(vm.popUint64())
-}
-
-func (vm *VM) fetchUint64() uint64 {
-	val := binary.LittleEndian.Uint64(vm.ctx.code[vm.ctx.pc:])
-	vm.ctx.pc += 8
-	return val
-}
-
-func (vm *VM) fetchInt64() int64 {
-	return int64(vm.fetchUint64())
-}
-
-func (vm *VM) fetchUint32() uint32 {
-	val := binary.LittleEndian.Uint32(vm.ctx.code[vm.ctx.pc:])
-	vm.ctx.pc += 4
-	return val
-}
-
-func (vm *VM) fetchInt32() int32 {
-	return int32(vm.fetchUint32())
-}
-
-func (vm *VM) pushFloat32(v float32) {
-	vm.pushUint32(uint32(v))
-}
-
-func (vm *VM) popFloat32() float32 {
-	return math.Float32frombits(vm.popUint32())
 }
 
 func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {

@@ -12,8 +12,13 @@ const (
 	ValueTypeFunc           = 0x60
 )
 
+// some shortcuts
 var (
-	ValueTypeEmpty = []ValueType{0x0}
+	ValueTypeEmpty     = []ValueType{0x0}
+	ValueTypeSingleI32 = []ValueType{ValueTypeI32}
+	ValueTypeDoubleI32 = []ValueType{ValueTypeI32, ValueTypeI32}
+	ValueTypeSingleF32 = []ValueType{ValueTypeF32}
+	ValueTypeDoubleF32 = []ValueType{ValueTypeF32, ValueTypeF32}
 )
 
 var (

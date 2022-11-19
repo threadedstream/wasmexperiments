@@ -12,9 +12,10 @@ var (
 	localSetOp  = newVarargOp("local.set", 0x21)
 	globalGetOp = newVarargOp("global.get", 0x23)
 	globalSetOp = newVarargOp("global.set", 0x24)
-	i32LoadOp   = newOp("i32.load", 0x28, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	f32LoadOp   = newOp("f32.load", 0x2a, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeF32})
-	//i32StoreOp  = newOp("i32.store", 0x36)
+	i32LoadOp   = newOp("i32.load", 0x28, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	f32LoadOp   = newOp("f32.load", 0x2a, types.ValueTypeDoubleI32, types.ValueTypeSingleF32)
+	i32StoreOp  = newOp("i32.store", 0x36, types.ValueTypeDoubleI32, types.ValueTypeEmpty)
+	f32StoreOp  = newOp("f32.store", 0x38, types.ValueTypeDoubleI32, types.ValueTypeEmpty)
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 )
 
 func (vm *VM) getLocal() {
+	vm.ctx.pc++
 	index := vm.fetchUint32()
 	vm.pushUint64(vm.ctx.locals[index])
 }
@@ -50,6 +52,14 @@ func (vm *VM) i32Load() {
 	vm.pushUint32(binary.LittleEndian.Uint32(vm.currMem()))
 }
 
+func (vm *VM) i32Store() {
+	if !vm.inBounds(3) {
+		panic(ErrOutOfMemory)
+	}
+	v := vm.popUint32()
+	binary.LittleEndian.PutUint32(vm.currMem(), v)
+}
+
 func (vm *VM) f32Load() {
 	if !vm.inBounds(3) {
 		panic(ErrOutOfMemory)
@@ -58,22 +68,24 @@ func (vm *VM) f32Load() {
 }
 
 func (vm *VM) f32Store() {
-	v := math.Float32bits(vm.popFloat32())
 	if !vm.inBounds(3) {
 		panic(ErrOutOfMemory)
 	}
+	v := math.Float32bits(vm.popFloat32())
 	binary.LittleEndian.PutUint32(vm.currMem(), v)
 }
 
 func (vm *VM) inBounds(offset int) bool {
-	addr := uint64(binary.LittleEndian.Uint32(vm.ctx.code[vm.ctx.pc:])) + uint64(uint32(vm.ctx.stack[len(vm.ctx.stack)-1]))
+	addr := uint64(binary.LittleEndian.Uint32(vm.ctx.code[vm.ctx.pc:])) + uint64(vm.peekUint32())
 	return addr+uint64(offset) < uint64(len(vm.memory))
 }
 
-func (vm *VM) fetchBaseAddr() int {
-	return int(vm.fetchUint32() + uint32(vm.popInt32()))
+func (vm *VM) fetchEffectiveAddr() int {
+	baseAddr := vm.fetchUint32()
+	offset := vm.popInt32()
+	return int(baseAddr + uint32(offset))
 }
 
 func (vm *VM) currMem() []byte {
-	return vm.memory[vm.fetchBaseAddr():]
+	return vm.memory[vm.fetchEffectiveAddr():]
 }

@@ -1,6 +1,9 @@
 package exec
 
-import "errors"
+import (
+	"errors"
+	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
+)
 
 const (
 	// make an interpreter option?
@@ -61,35 +64,23 @@ func (fn *Function) execCode(vm *VM) any {
 	code := vm.ctx.code
 	endOff := len(code)
 	for int(vm.ctx.pc) < endOff {
-		switch Bytecode(code[vm.ctx.pc]) {
-		case i32AddOp:
-			vm.i32Add()
-			vm.ctx.pc++
-		case i32SubOp:
-			vm.i32Sub()
-			vm.ctx.pc++
-		case i32MulOp:
-			vm.i32Mul()
-			vm.ctx.pc++
-		case i32DivUOp:
-			vm.i32DivU()
-			vm.ctx.pc++
-		case i32DivSOp:
-			vm.i32DivS()
-			vm.ctx.pc++
-		case i32LoadOp:
-
-		case callOp:
-			vm.call()
-		case localGetOp:
-			vm.ctx.pc++
-			vm.getLocal()
-		case endOp:
+		currCode := Bytecode(code[vm.ctx.pc])
+		if handler, ok := vm.funcTable[currCode]; ok {
+			handler()
+			continue
+		}
+		if currCode == endOp {
 			break
 		}
+		reporter.ReportError("execCode: unknown instruction with code %v", currCode)
 	}
-	if len(vm.ctx.stack) != 0 {
-		return vm.popUint32()
+	// check if function returns something
+	if fn.returns {
+		if len(vm.ctx.stack) > 0 {
+			return vm.popUint32()
+		} else {
+			reporter.ReportError("expected to have return value on stack")
+		}
 	}
 	return nil
 }

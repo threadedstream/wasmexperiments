@@ -19,6 +19,9 @@ const (
 	end       byte = 0x0b
 )
 
+type InitExpr interface {
+}
+
 var ErrEmptyInitExpr = errors.New("wasm: initializer expression produces no value")
 
 type InvalidInitExprOpError byte

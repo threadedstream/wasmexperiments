@@ -1,5 +1,7 @@
 package exec
 
+// TODO(threadedstream): likely to get deprecated
+
 //var (
 //	opTable = map[byte]func(){
 //		iBlock:

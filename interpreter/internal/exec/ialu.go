@@ -8,14 +8,14 @@ import (
 )
 
 var (
-	i32AddOp  = newOp("i32.add", 0x6A, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32SubOp  = newOp("i32.sub", 0x6B, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32MulOp  = newOp("i32.mul", 0x6C, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32DivSOp = newOp("i32.div_s", 0x6D, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32DivUOp = newOp("i32.div_u", 0x6E, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32RemSOp = newOp("i32.rem_s", 0x6F, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	i32RemUOp = newOp("i32.rem_u", 0x70, []types.ValueType{types.ValueTypeI32, types.ValueTypeI32}, []types.ValueType{types.ValueTypeI32})
-	callOp    = newOp("call", 0x10, []types.ValueType{types.ValueTypeI32}, []types.ValueType{})
+	i32AddOp  = newOp("i32.add", 0x6A, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32MulOp  = newOp("i32.mul", 0x6C, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32SubOp  = newOp("i32.sub", 0x6B, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32DivSOp = newOp("i32.div_s", 0x6D, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32DivUOp = newOp("i32.div_u", 0x6E, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32RemSOp = newOp("i32.rem_s", 0x6F, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32RemUOp = newOp("i32.rem_u", 0x70, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	callOp    = newOp("call", 0x10, types.ValueTypeSingleI32, types.ValueTypeEmpty)
 	endOp     = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
 )
 
@@ -33,11 +33,13 @@ func (vm *VM) i32Popcnt() {
 
 func (vm *VM) i32Add() {
 	vm.pushUint32(vm.popUint32() + vm.popUint32())
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Mul() {
 	// TODO(threadedstream): add overflow checks?
 	vm.pushUint32(vm.popUint32() * vm.popUint32())
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32DivS() {
@@ -47,72 +49,85 @@ func (vm *VM) i32DivS() {
 		reporter.ReportError("detected integer overflow")
 	}
 	vm.pushInt32(lhs / rhs)
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Sub() {
 	rhs := vm.popUint32()
 	lhs := vm.popUint32()
 	vm.pushUint32(lhs - rhs)
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32DivU() {
 	rhs := vm.popUint32()
 	lhs := vm.popUint32()
 	vm.pushUint32(lhs / rhs)
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32RemS() {
 	rhs := vm.popInt32()
 	lhs := vm.popInt32()
 	vm.pushInt32(lhs % rhs)
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32RemU() {
 	rhs := vm.popUint32()
 	lhs := vm.popUint32()
 	vm.pushUint32(lhs % rhs)
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32And() {
 	vm.pushUint32(vm.popUint32() & vm.popUint32())
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Or() {
 	vm.pushUint32(vm.popUint32() | vm.popUint32())
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Xor() {
 	vm.pushUint32(vm.popUint32() ^ vm.popUint32())
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Shl() {
 	shift := vm.popUint32()
 	target := vm.popUint32()
 	vm.pushUint32(target << (shift % 32))
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Shr() {
 	shift := vm.popUint32()
 	target := vm.popUint32()
 	vm.pushUint32(target >> (shift % 32))
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32ShrS() {
 	shift := vm.popUint32()
 	target := vm.popInt32()
 	vm.pushInt32(target >> (shift % 32))
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32RotL() {
 	factor := vm.popUint32()
 	target := vm.popUint32()
 	vm.pushUint32(bits.RotateLeft32(target, int(factor)))
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32RotR() {
 	factor := vm.popUint32()
 	target := vm.popUint32()
 	vm.pushUint32(bits.RotateLeft32(target, int(-factor)))
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Eqz() {
@@ -122,6 +137,7 @@ func (vm *VM) i32Eqz() {
 	} else {
 		vm.pushUint32(0)
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Eq() {
@@ -132,6 +148,7 @@ func (vm *VM) i32Eq() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Ne() {
@@ -142,6 +159,7 @@ func (vm *VM) i32Ne() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32LtS() {
@@ -152,6 +170,7 @@ func (vm *VM) i32LtS() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32LtU() {
@@ -162,6 +181,7 @@ func (vm *VM) i32LtU() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32LeS() {
@@ -172,6 +192,7 @@ func (vm *VM) i32LeS() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32LeU() {
@@ -182,6 +203,7 @@ func (vm *VM) i32LeU() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32GtS() {
@@ -192,6 +214,7 @@ func (vm *VM) i32GtS() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32GtU() {
@@ -202,6 +225,7 @@ func (vm *VM) i32GtU() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32GeS() {
@@ -212,6 +236,7 @@ func (vm *VM) i32GeS() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32GeU() {
@@ -222,4 +247,5 @@ func (vm *VM) i32GeU() {
 	} else {
 		vm.pushZero()
 	}
+	vm.ctx.pc++
 }

@@ -1,6 +1,15 @@
 package exec
 
-import "math"
+import (
+	"github.com/threadedstream/wasmexperiments/internal/types"
+	"math"
+)
+
+var (
+	f32AddOp = newOp("f32.add", 0x92, types.ValueTypeDoubleF32, types.ValueTypeSingleF32)
+	f32SubOp = newOp("f32.sub", 0x93, types.ValueTypeDoubleF32, types.ValueTypeSingleF32)
+	f32MulOp = newOp("f32.mul", 0x94, types.ValueTypeDoubleF32, types.ValueTypeSingleF32)
+)
 
 func (vm *VM) f32Add() {
 	rhs := float32(vm.popUint32())
