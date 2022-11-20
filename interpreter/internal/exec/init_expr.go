@@ -83,3 +83,8 @@ outer:
 
 	return buf.Bytes(), nil
 }
+
+// TODO(threadedstream): make it public?
+func (m *Module) execInitExpr(expr []byte) (any, error) {
+	return nil, nil
+}

@@ -99,8 +99,24 @@ func (vm *VM) fetchInt32() int32 {
 	return int32(vm.fetchUint32())
 }
 
+func (vm *VM) fetchFloat32() float32 {
+	val := binary.LittleEndian.Uint32(vm.ctx.code[vm.ctx.pc:])
+	vm.ctx.pc += 4
+	return math.Float32frombits(val)
+}
+
+func (vm *VM) fetchFloat64() float64 {
+	val := binary.LittleEndian.Uint64(vm.ctx.code[vm.ctx.pc:])
+	vm.ctx.pc += 8
+	return math.Float64frombits(val)
+}
+
 func (vm *VM) pushFloat32(v float32) {
 	vm.pushUint32(uint32(v))
+}
+
+func (vm *VM) pushFloat64(v float64) {
+	vm.pushUint64(uint64(v))
 }
 
 func (vm *VM) popFloat32() float32 {

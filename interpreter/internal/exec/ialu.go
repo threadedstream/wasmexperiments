@@ -8,15 +8,16 @@ import (
 )
 
 var (
-	i32AddOp  = newOp("i32.add", 0x6A, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	i32MulOp  = newOp("i32.mul", 0x6C, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	i32SubOp  = newOp("i32.sub", 0x6B, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	i32DivSOp = newOp("i32.div_s", 0x6D, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	i32DivUOp = newOp("i32.div_u", 0x6E, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	i32RemSOp = newOp("i32.rem_s", 0x6F, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	i32RemUOp = newOp("i32.rem_u", 0x70, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
-	callOp    = newOp("call", 0x10, types.ValueTypeSingleI32, types.ValueTypeEmpty)
-	endOp     = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
+	i32ConstOp = newOp("i32.const", 0x41, types.ValueTypeSingleI32, types.ValueTypeSingleI32)
+	i32AddOp   = newOp("i32.add", 0x6A, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32MulOp   = newOp("i32.mul", 0x6C, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32SubOp   = newOp("i32.sub", 0x6B, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32DivSOp  = newOp("i32.div_s", 0x6D, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32DivUOp  = newOp("i32.div_u", 0x6E, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32RemSOp  = newOp("i32.rem_s", 0x6F, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32RemUOp  = newOp("i32.rem_u", 0x70, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	callOp     = newOp("call", 0x10, types.ValueTypeSingleI32, types.ValueTypeEmpty)
+	endOp      = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
 )
 
 func (vm *VM) i32Clz() {

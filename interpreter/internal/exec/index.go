@@ -55,7 +55,7 @@ func (m *Module) populateLinearMemory() error {
 			return InvalidLinearMemoryIndexError(entry.Index)
 		}
 
-		val, err := m.ExecInitExpr(entry.Offset)
+		val, err := m.execInitExpr(entry.Offset)
 		if err != nil {
 			return err
 		}
@@ -78,10 +78,6 @@ func (m *Module) populateLinearMemory() error {
 
 	return nil
 
-}
-
-func (m *Module) ExecInitExpr(expr []byte) (any, error) {
-	return nil, nil
 }
 
 func (m *Module) initializeFunctionIndexSpace() {

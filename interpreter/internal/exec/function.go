@@ -66,6 +66,7 @@ func (fn *Function) execCode(vm *VM) any {
 	for int(vm.ctx.pc) < endOff {
 		currCode := Bytecode(code[vm.ctx.pc])
 		if handler, ok := vm.funcTable[currCode]; ok {
+			vm.ctx.pc++
 			handler()
 			continue
 		}

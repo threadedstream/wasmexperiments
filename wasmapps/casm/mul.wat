@@ -25,7 +25,7 @@
     i32.add
     local.set 6
     i32.const 10
-    local.set 7
+    local.set 7 
     local.get 6
     local.get 7
     i32.gt_u

@@ -65,12 +65,17 @@ func Disassemble(code []byte) ([]Instr, error) {
 		}
 		switch instr.Op.Code {
 		case i32AddOp:
-			// done
 			out = append(out, instr)
 		case localGetOp:
 			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)))
 			out = append(out, instr)
 		case callOp:
+			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)))
+			out = append(out, instr)
+		case i32LoadOp:
+			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)), int(ignoreError(reader.ReadByte)))
+			out = append(out, instr)
+		case i32ConstOp:
 			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)))
 			out = append(out, instr)
 		case endOp:
@@ -105,6 +110,17 @@ func Compile(is []Instr) ([]byte, error) {
 			byteStream.WriteByte(byte(i32AddOp))
 		case callOp:
 			byteStream.WriteByte(byte(callOp))
+			var b [4]byte
+			binaryFormat.PutUint32(b[:], uint32(i.Args[0].(int)))
+			byteStream.Write(b[:])
+		case i32LoadOp:
+			byteStream.WriteByte(byte(i32LoadOp))
+			var b [2]byte
+			b[0] = byte(i.Args[0].(int))
+			b[1] = byte(i.Args[1].(int))
+			byteStream.Write(b[:])
+		case i32ConstOp:
+			byteStream.WriteByte(byte(i32ConstOp))
 			var b [4]byte
 			binaryFormat.PutUint32(b[:], uint32(i.Args[0].(int)))
 			byteStream.Write(b[:])

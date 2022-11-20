@@ -31,6 +31,7 @@ type VM struct {
 func NewVM(m *Module) (*VM, error) {
 	vm := new(VM)
 
+	vm.initFuncTable()
 	if m.MemorySection != nil && len(m.MemorySection.Entries) != 0 {
 		if len(m.MemorySection.Entries) > 1 {
 			return nil, errors.New("newVM: expected to have exactly one instance of memory")
@@ -83,6 +84,7 @@ func (vm *VM) initFuncTable() {
 			localSetOp:  vm.setLocal,
 			globalGetOp: vm.getGlobal,
 			globalSetOp: vm.setGlobal,
+			i32ConstOp:  vm.i32Const,
 			i32LoadOp:   vm.i32Load,
 			f32LoadOp:   vm.f32Load,
 			i32StoreOp:  vm.i32Store,
