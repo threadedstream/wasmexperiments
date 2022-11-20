@@ -12,7 +12,7 @@ const (
 type context struct {
 	stack   []uint64
 	locals  []uint64
-	code    []byte
+	code    []Instr
 	pc      int64
 	curFunc int64
 }
@@ -69,6 +69,8 @@ func NewVM(m *Module) (*VM, error) {
 func (vm *VM) initFuncTable() {
 	if vm.funcTable == nil {
 		vm.funcTable = map[Bytecode]func(){
+			ifOp:        vm.execIf,
+			i32EqOp:     vm.i32Eq,
 			i32AddOp:    vm.i32Add,
 			i32SubOp:    vm.i32Sub,
 			i32MulOp:    vm.i32Mul,
@@ -94,10 +96,10 @@ func (vm *VM) initFuncTable() {
 }
 
 func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
-	// some validation of input parameters
-	if int(index) > len(vm.funcs) {
-		return nil, fmt.Errorf("attempting to call a function with an index %d with length of funcs being %d", index, len(vm.funcs))
-	}
+	//// some validation of input parameters
+	//if int(index) > len(vm.funcs) {
+	//	return nil, fmt.Errorf("attempting to call a function with an index %d with length of funcs being %d", index, len(vm.funcs))
+	//}
 
 	// validate number of arguments
 	fn := vm.module.GetFunction(int(index))

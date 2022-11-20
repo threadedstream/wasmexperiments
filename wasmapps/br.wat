@@ -11,4 +11,22 @@
             (i32.const 0x10)
         )
     )
+    (func (export "load_item") (result i32)
+        (i32.const 0x10)
+        (i32.load offset=258)
+        (i32.const 0x4)
+        (i32.store)
+        (i32.const 0x1)
+    )
+
+    (func $fac (export "fac") (param $x i32) (result i32)
+        (i32.const 0x0)
+        (if 
+            (then
+                
+            )
+            (else 
+            )
+        )  
+    )
 )

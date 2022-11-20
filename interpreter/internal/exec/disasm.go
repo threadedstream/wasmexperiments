@@ -4,52 +4,20 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
+	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
+	"github.com/threadedstream/wasmexperiments/internal/pkg/wbinary"
 	"io"
-	"strings"
 )
 
 var (
 	errInvalidOp = errors.New("invalid op")
 )
 
-type Instr struct {
-	Op            Op
-	Args          []any
-	isUnreachable bool
-}
-
-func (i Instr) String() string {
-	s := strings.Builder{}
-	s.WriteString(i.Op.Name + " ")
-	for _, arg := range i.Args {
-		s.WriteString(fmt.Sprintf("%v,", arg))
-	}
-	return s.String()
-}
-
-func Dump(is []Instr) {
-	s := strings.Builder{}
-	for _, i := range is {
-		s.WriteString(i.String())
-		s.WriteRune('\n')
-	}
-	println(s.String())
-}
-
-func NewInstr(op Op, args []any, isUnreachable bool) Instr {
-	return Instr{
-		Op:            op,
-		Args:          args,
-		isUnreachable: isUnreachable,
-	}
-}
-
 func Disassemble(code []byte) ([]Instr, error) {
 	var out []Instr
 	var err error
 	var bytecode byte
-	reader := bytes.NewReader(code)
+	reader := wasm_reader.NewWasmReader(bytes.NewReader(code))
 
 	for err == nil {
 		bytecode, err = reader.ReadByte()
@@ -60,26 +28,38 @@ func Disassemble(code []byte) ([]Instr, error) {
 		if !op.IsValid() {
 			return nil, errInvalidOp
 		}
-		instr := Instr{
-			Op: op,
-		}
-		switch instr.Op.Code {
-		case i32AddOp:
-			out = append(out, instr)
-		case localGetOp:
-			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)))
-			out = append(out, instr)
-		case callOp:
-			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)))
-			out = append(out, instr)
-		case i32LoadOp:
-			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)), int(ignoreError(reader.ReadByte)))
-			out = append(out, instr)
+		switch op.Code {
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp:
+			// we ain't got any operand stack yet
+			ins := newDoubleArgI(op, nil, nil)
+			out = append(out, ins)
+		case globalGetOp, localGetOp, localSetOp, globalSetOp, callOp:
+			index, e := wbinary.ReadVarUint32(reader)
+			if e != nil {
+				return nil, e
+			}
+			ins := newSingleArgI(op, index)
+			out = append(out, ins)
+		case i32LoadOp, i32StoreOp:
+			alignment, e := wbinary.ReadVarUint32(reader)
+			if e != nil {
+				return nil, err
+			}
+			off, e := wbinary.ReadVarUint32(reader)
+			if e != nil {
+				return nil, err
+			}
+			ins := newDoubleArgI(op, alignment, off)
+			out = append(out, ins)
 		case i32ConstOp:
-			instr.Args = append(instr.Args, int(ignoreError(reader.ReadByte)))
-			out = append(out, instr)
+			imm, e := wbinary.ReadVarUint32(reader)
+			if e != nil {
+				return nil, e
+			}
+			ins := newSingleArgI(op, imm)
+			out = append(out, ins)
 		case endOp:
-			out = append(out, instr)
+			// do nothing
 		}
 	}
 
@@ -99,12 +79,13 @@ func Compile(is []Instr) ([]byte, error) {
 	// let the implementation allocate bytes on demand
 	byteStream := bytes.NewBuffer(nil)
 	for _, i := range is {
-		switch i.Op.Code {
+		switch i.Op().Code {
 		case localGetOp:
+			ins := i.(*I32LocalGetI)
 			// does allocation happen if I use b[:]?
 			byteStream.WriteByte(byte(localGetOp))
 			var b [4]byte
-			binaryFormat.PutUint32(b[:], uint32(i.Args[0].(int)))
+			binaryFormat.PutUint32(b[:], ins.arg0)
 			byteStream.Write(b[:])
 		case i32AddOp:
 			byteStream.WriteByte(byte(i32AddOp))
@@ -115,9 +96,15 @@ func Compile(is []Instr) ([]byte, error) {
 			byteStream.Write(b[:])
 		case i32LoadOp:
 			byteStream.WriteByte(byte(i32LoadOp))
-			var b [2]byte
-			b[0] = byte(i.Args[0].(int))
-			b[1] = byte(i.Args[1].(int))
+			var b [8]byte
+			binaryFormat.PutUint32(b[0:4], uint32(i.Args[0].(int)))
+			binaryFormat.PutUint32(b[4:8], uint32(i.Args[1].(int)))
+			byteStream.Write(b[:])
+		case i32StoreOp:
+			byteStream.WriteByte(byte(i32StoreOp))
+			var b [8]byte
+			binaryFormat.PutUint32(b[0:4], uint32(i.Args[0].(int)))
+			binaryFormat.PutUint32(b[4:8], uint32(i.Args[1].(int)))
 			byteStream.Write(b[:])
 		case i32ConstOp:
 			byteStream.WriteByte(byte(i32ConstOp))

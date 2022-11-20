@@ -46,13 +46,18 @@ func (vm *VM) setGlobal() {
 }
 
 func (vm *VM) i32Load() {
+	// skip alignment for now, it defaults to 2
+	vm.ctx.pc += 4
 	if !vm.inBounds(3) {
 		panic(ErrOutOfMemory)
 	}
 	vm.pushUint32(binary.LittleEndian.Uint32(vm.currMem()))
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) i32Store() {
+	// skip alignment for now, it defaults to 2
+	vm.ctx.pc += 4
 	if !vm.inBounds(3) {
 		panic(ErrOutOfMemory)
 	}
