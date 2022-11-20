@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/threadedstream/wasmexperiments/internal/types"
-	"math"
 )
 
 var (
@@ -23,65 +22,85 @@ var (
 )
 
 func (vm *VM) getLocal() {
-	vm.ctx.pc++
-	index := vm.fetchUint32()
+	in := vm.ctx.ins[vm.ctx.pc].(*I32LocalGetI)
+	index := in.arg0.(uint32)
 	vm.pushUint64(vm.ctx.locals[index])
+	vm.ctx.pc++
 }
 
 func (vm *VM) setLocal() {
-	index := vm.fetchUint32()
+	in := vm.ctx.ins[vm.ctx.pc].(*I32LocalSetI)
+	index := in.arg0.(uint32)
 	value := vm.popUint64()
 	vm.ctx.locals[index] = value
+	vm.ctx.pc++
 }
 
 func (vm *VM) getGlobal() {
-	index := vm.fetchUint32()
+	in := vm.ctx.ins[vm.ctx.pc].(*I32GlobalGetI)
+	index := in.arg0.(uint32)
 	vm.pushUint64(vm.globals[index])
+	vm.ctx.pc++
 }
 
 func (vm *VM) setGlobal() {
-	index := vm.fetchUint32()
+	in := vm.ctx.ins[vm.ctx.pc].(*I32GlobalSetI)
+	index := in.arg0.(uint32)
 	value := vm.popUint64()
 	vm.globals[index] = value
+	vm.ctx.pc++
+}
+
+func (vm *VM) teeLocal() {
+	panic("unreachable")
 }
 
 func (vm *VM) i32Load() {
-	// skip alignment for now, it defaults to 2
-	vm.ctx.pc += 4
-	if !vm.inBounds(3) {
+	in := vm.ctx.ins[vm.ctx.pc].(*I32LoadI)
+	base := int(vm.peekUint32())
+	ioff := int(in.arg1.(int32))
+	off := 3
+	if !vm.inBounds(base, ioff, off) {
 		panic(ErrOutOfMemory)
 	}
-	vm.pushUint32(binary.LittleEndian.Uint32(vm.currMem()))
-	vm.ctx.pc += 4
+	valueAt := vm.memory[(base + ioff):]
+	vm.pushUint32(binary.LittleEndian.Uint32(valueAt))
+	vm.ctx.pc++
 }
 
 func (vm *VM) i32Store() {
-	// skip alignment for now, it defaults to 2
-	vm.ctx.pc += 4
-	if !vm.inBounds(3) {
+	in := vm.ctx.ins[vm.ctx.pc].(*I32StoreI)
+	val := vm.popUint32()
+	base := int(vm.peekUint32())
+	ioff := int(in.arg1.(int32))
+	off := 3
+	if !vm.inBounds(base, ioff, off) {
 		panic(ErrOutOfMemory)
 	}
-	v := vm.popUint32()
-	binary.LittleEndian.PutUint32(vm.currMem(), v)
+	effAddr := vm.memory[(base + ioff):]
+	binary.LittleEndian.PutUint32(effAddr, val)
+	vm.ctx.pc++
 }
 
 func (vm *VM) f32Load() {
-	if !vm.inBounds(3) {
-		panic(ErrOutOfMemory)
-	}
-	vm.pushFloat32(math.Float32frombits(binary.LittleEndian.Uint32(vm.currMem())))
+	panic("unreachable")
+	//if !vm.inBounds(3) {
+	//	panic(ErrOutOfMemory)
+	//}
+	//vm.pushFloat32(math.Float32frombits(binary.LittleEndian.Uint32(vm.currMem())))
 }
 
 func (vm *VM) f32Store() {
-	if !vm.inBounds(3) {
-		panic(ErrOutOfMemory)
-	}
-	v := math.Float32bits(vm.popFloat32())
-	binary.LittleEndian.PutUint32(vm.currMem(), v)
+	panic("unreachable")
+	//if !vm.inBounds(3) {
+	//	panic(ErrOutOfMemory)
+	//}
+	//v := math.Float32bits(vm.popFloat32())
+	//binary.LittleEndian.PutUint32(vm.currMem(), v)
 }
 
-func (vm *VM) inBounds(offset int) bool {
-	addr := uint64(binary.LittleEndian.Uint32(vm.ctx.code[vm.ctx.pc:])) + uint64(vm.peekUint32())
+func (vm *VM) inBounds(base, ioffset, offset int) bool {
+	addr := uint64(base) + uint64(ioffset)
 	return addr+uint64(offset) < uint64(len(vm.memory))
 }
 

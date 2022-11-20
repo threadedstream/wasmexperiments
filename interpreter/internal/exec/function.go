@@ -36,7 +36,8 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 	prevCtx := vm.ctx
 	vm.ctx = context{
 		stack:   stack,
-		code:    compiledCode,
+		raw:     compiledCode,
+		ins:     disasmedCode,
 		pc:      0,
 		curFunc: index,
 	}
@@ -61,16 +62,16 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 }
 
 func (fn *Function) execCode(vm *VM) any {
-	code := vm.ctx.code
+	code := vm.ctx.ins
 	endOff := len(code)
 	for int(vm.ctx.pc) < endOff {
-		currCode := Bytecode(code[vm.ctx.pc])
-		if handler, ok := vm.funcTable[currCode]; ok {
-			vm.ctx.pc++
-			handler()
-			continue
-		}
+		currCode := vm.ctx.ins[vm.ctx.pc].Op().Code
 		if currCode == endOp {
+			if handler, ok := vm.funcTable[currCode]; ok {
+				vm.ctx.pc++
+				handler()
+				continue
+			}
 			break
 		}
 		reporter.ReportError("execCode: unknown instruction with code %v", currCode)

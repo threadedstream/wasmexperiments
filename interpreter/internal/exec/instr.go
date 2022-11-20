@@ -23,10 +23,9 @@ func (ci commonI) String() string {
 	return ""
 }
 
-type doubleArgI[T any] struct {
+type doubleArgI struct {
 	commonI
-	arg0 T
-	arg1 T
+	arg0, arg1 any
 }
 
 func (di doubleArgI) String() string {
@@ -39,49 +38,32 @@ func (di doubleArgI) String() string {
 	return s.String()
 }
 
-func newDoubleArgI[T any](op Op, arg0, arg1 T) Instr {
+func newDoubleArgI(op Op, arg0, arg1 any) Instr {
+	inner := doubleArgI{
+		commonI: commonI{op: op},
+		arg0:    arg0,
+		arg1:    arg1,
+	}
 	switch op.Code {
 	default:
 		reporter.ReportError("unexpected double arg instruction with opcode %v", op.Code)
 	case i32AddOp:
-		return &I32AddI{doubleArgI[*uint32]{
-			commonI: commonI{op: op},
-			arg0:    arg0.(*uint32),
-			arg1:    arg1.(*uint32),
-		}}
+		return &I32AddI{inner}
 	case i32SubOp:
-		return &I32SubI{doubleArgI[*uint32]{
-			commonI: commonI{op: op},
-			arg0:    arg0.(*uint32),
-			arg1:    arg1.(*uint32),
-		}}
+		return &I32SubI{inner}
 	case i32MulOp:
-		return &I32MulI{doubleArgI[*uint32]{
-			commonI: commonI{op: op},
-			arg0:    arg0.(*uint32),
-			arg1:    arg1.(*uint32),
-		}}
-
+		return &I32MulI{inner}
 	case i32DivUOp:
-		return &I32DivUI{doubleArgI[*uint32]{
-			commonI: commonI{op: op},
-			arg0:    arg0.(*uint32),
-			arg1:    arg1.(*uint32),
-		}}
-
+		return &I32DivUI{inner}
 	case i32DivSOp:
-		return &I32DivSI{doubleArgI[*uint32]{
-			commonI: commonI{op: op},
-			arg0:    arg0.(*uint32),
-			arg1:    arg1.(*uint32),
-		}}
+		return &I32DivSI{inner}
 	}
 	panic("unreachable")
 }
 
-type singleArgI[T any] struct {
+type singleArgI struct {
 	commonI
-	arg0 T
+	arg0 any
 }
 
 func (si singleArgI) String() string {
@@ -103,58 +85,64 @@ func newSingleArgI[T any](op Op, arg0 T) Instr {
 
 type (
 	I32AddI struct {
-		doubleArgI[*uint32]
+		doubleArgI
 	}
 
 	I32SubI struct {
-		doubleArgI[*uint32]
+		doubleArgI
 	}
 
 	I32MulI struct {
-		doubleArgI[*uint32]
+		doubleArgI
 	}
 
 	I32DivUI struct {
-		doubleArgI[*uint32]
+		doubleArgI
 	}
 
 	I32DivSI struct {
-		doubleArgI[*uint32]
+		doubleArgI
 	}
 
 	I32EqI struct {
-		singleArgI[*uint32]
+		singleArgI
 	}
 
 	I32LoadI struct {
-		doubleArgI[uint32] // arg0 represents alignment, whereas arg1 represents offset
+		doubleArgI
 	}
 
 	I32StoreI struct {
-		doubleArgI[uint32]
+		doubleArgI
 	}
 
 	I32ConstI struct {
-		singleArgI[uint32]
+		singleArgI
 	}
 
 	I32LocalGetI struct {
-		singleArgI[uint32]
+		singleArgI
 	}
 
 	I32GlobalGetI struct {
-		singleArgI[uint32]
+		singleArgI
 	}
 
 	I32LocalSetI struct {
-		doubleArgI[uint32]
+		doubleArgI
 	}
 
 	I32GlobalSetI struct {
-		doubleArgI[uint32]
+		doubleArgI
+	}
+
+	CallI struct {
+		singleArgI
 	}
 
 	IfI struct {
+		body     []Instr
+		elseBody []Instr
 	}
 )
 

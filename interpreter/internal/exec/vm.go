@@ -12,7 +12,8 @@ const (
 type context struct {
 	stack   []uint64
 	locals  []uint64
-	code    []Instr
+	raw     []byte
+	ins     []Instr
 	pc      int64
 	curFunc int64
 }

@@ -17,6 +17,7 @@ func Disassemble(code []byte) ([]Instr, error) {
 	var out []Instr
 	var err error
 	var bytecode byte
+	var lastOp Bytecode
 	reader := wasm_reader.NewWasmReader(bytes.NewReader(code))
 
 	for err == nil {
@@ -61,6 +62,11 @@ func Disassemble(code []byte) ([]Instr, error) {
 		case endOp:
 			// do nothing
 		}
+		lastOp = op.Code
+	}
+
+	if lastOp != endOp {
+		return nil, errors.New("disasm: bytecode stream must be terminated by end instruction")
 	}
 
 	if err != nil {
@@ -79,37 +85,22 @@ func Compile(is []Instr) ([]byte, error) {
 	// let the implementation allocate bytes on demand
 	byteStream := bytes.NewBuffer(nil)
 	for _, i := range is {
-		switch i.Op().Code {
-		case localGetOp:
-			ins := i.(*I32LocalGetI)
+		switch code := i.Op().Code; code {
+		case localGetOp, globalGetOp, callOp, i32ConstOp:
+			ins := i.(*singleArgI)
 			// does allocation happen if I use b[:]?
-			byteStream.WriteByte(byte(localGetOp))
+			byteStream.WriteByte(byte(code))
 			var b [4]byte
-			binaryFormat.PutUint32(b[:], ins.arg0)
+			binaryFormat.PutUint32(b[:], ins.arg0.(uint32))
 			byteStream.Write(b[:])
-		case i32AddOp:
-			byteStream.WriteByte(byte(i32AddOp))
-		case callOp:
-			byteStream.WriteByte(byte(callOp))
-			var b [4]byte
-			binaryFormat.PutUint32(b[:], uint32(i.Args[0].(int)))
-			byteStream.Write(b[:])
-		case i32LoadOp:
-			byteStream.WriteByte(byte(i32LoadOp))
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp:
+			byteStream.WriteByte(byte(code))
+		case i32LoadOp, i32StoreOp:
+			ins := i.(*doubleArgI)
+			byteStream.WriteByte(byte(code))
 			var b [8]byte
-			binaryFormat.PutUint32(b[0:4], uint32(i.Args[0].(int)))
-			binaryFormat.PutUint32(b[4:8], uint32(i.Args[1].(int)))
-			byteStream.Write(b[:])
-		case i32StoreOp:
-			byteStream.WriteByte(byte(i32StoreOp))
-			var b [8]byte
-			binaryFormat.PutUint32(b[0:4], uint32(i.Args[0].(int)))
-			binaryFormat.PutUint32(b[4:8], uint32(i.Args[1].(int)))
-			byteStream.Write(b[:])
-		case i32ConstOp:
-			byteStream.WriteByte(byte(i32ConstOp))
-			var b [4]byte
-			binaryFormat.PutUint32(b[:], uint32(i.Args[0].(int)))
+			binaryFormat.PutUint32(b[0:4], ins.arg0.(uint32))
+			binaryFormat.PutUint32(b[4:8], ins.arg1.(uint32))
 			byteStream.Write(b[:])
 		case endOp:
 			byteStream.WriteByte(byte(endOp))
