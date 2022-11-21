@@ -7,7 +7,8 @@ import (
 
 const (
 	// make an interpreter option?
-	maxDepth = 15
+	maxDepth         = 15
+	maxStackFrameNum = 256
 )
 
 type Function struct {
@@ -24,7 +25,6 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 	}
 
 	stack := make([]uint64, 0, maxDepth)
-	var locals []uint64
 
 	disasmedCode, err := Disassemble(fn.code)
 	if err != nil {
@@ -32,11 +32,11 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 	}
 
 	Dump(disasmedCode)
-	compiledCode, _ := Compile(disasmedCode)
-	prevCtx := vm.ctx
-	vm.ctx = context{
+	//compiledCode, _ := Compile(disasmedCode)
+
+	vm.ctx = &context{
 		stack:   stack,
-		raw:     compiledCode,
+		raw:     nil,
 		ins:     disasmedCode,
 		pc:      0,
 		curFunc: index,
@@ -46,14 +46,17 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 		vm.pushUint64(arg)
 	}
 
+	var locals []uint64
 	for i := fn.numParams; i > 0; i-- {
 		locals = append(locals, vm.popUint64())
 	}
 
 	vm.ctx.locals = locals
 
+	vm.frames = append(vm.frames, vm.ctx)
+
 	ret := fn.execCode(vm)
-	vm.ctx = prevCtx
+	vm.frames = vm.frames[:len(vm.frames)-1]
 	if fn.returns {
 		return ret, nil
 	}
@@ -62,24 +65,11 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 }
 
 func (fn *Function) execCode(vm *VM) any {
-	code := vm.ctx.ins
-	endOff := len(code)
-	for int(vm.ctx.pc) < endOff {
-		currCode := vm.ctx.ins[vm.ctx.pc].Op().Code
-		if currCode == endOp {
-			if handler, ok := vm.funcTable[currCode]; ok {
-				vm.ctx.pc++
-				handler()
-				continue
-			}
-			break
-		}
-		reporter.ReportError("execCode: unknown instruction with code %v", currCode)
-	}
 	// check if function returns something
+	val := vm.execCode()
 	if fn.returns {
-		if len(vm.ctx.stack) > 0 {
-			return vm.popUint32()
+		if val != nil {
+			return val
 		} else {
 			reporter.ReportError("expected to have return value on stack")
 		}

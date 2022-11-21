@@ -122,3 +122,7 @@ func (vm *VM) pushFloat64(v float64) {
 func (vm *VM) popFloat32() float32 {
 	return math.Float32frombits(vm.popUint32())
 }
+
+func (vm *VM) currIns() Instr {
+	return vm.ctx.ins[vm.ctx.pc]
+}

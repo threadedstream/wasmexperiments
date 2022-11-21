@@ -3,6 +3,7 @@ package exec
 import (
 	"errors"
 	"fmt"
+	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 )
 
 const (
@@ -19,7 +20,8 @@ type context struct {
 }
 
 type VM struct {
-	ctx       context
+	ctx       *context
+	frames    []*context
 	module    *Module
 	globals   []uint64
 	memory    []byte
@@ -64,6 +66,8 @@ func NewVM(m *Module) (*VM, error) {
 		}
 	}
 
+	vm.frames = make([]*context, 0, maxStackFrameNum)
+
 	return vm, nil
 }
 
@@ -71,6 +75,7 @@ func (vm *VM) initFuncTable() {
 	if vm.funcTable == nil {
 		vm.funcTable = map[Bytecode]func(){
 			ifOp:        vm.execIf,
+			returnOp:    vm.ret,
 			i32EqOp:     vm.i32Eq,
 			i32AddOp:    vm.i32Add,
 			i32SubOp:    vm.i32Sub,
@@ -110,9 +115,22 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 }
 
 func (vm *VM) execCode() any {
-	startIndex := vm.module.StartSection.Index
-	fn := vm.module.GetFunction(int(startIndex))
-
-	fn.call(vm, int64(startIndex))
+	code := vm.ctx.ins
+	endOff := len(code)
+	for int(vm.ctx.pc) < endOff {
+		currCode := code[vm.ctx.pc].Op().Code
+		if currCode == endOp {
+			vm.ctx.pc++
+			break
+		}
+		if handler, ok := vm.funcTable[currCode]; ok {
+			handler()
+			continue
+		}
+		reporter.ReportError("execCode: unknown instruction with code %v\n", currCode)
+	}
+	if len(vm.ctx.stack) > 0 {
+		return vm.popInt64()
+	}
 	return nil
 }

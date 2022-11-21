@@ -1,7 +1,9 @@
 package exec
 
 func (vm *VM) i32Const() {
-	vm.pushUint32(vm.fetchUint32())
+	in := vm.currIns().(*I32ConstI)
+	vm.pushUint32(in.arg0.(uint32))
+	vm.ctx.pc++
 }
 
 func (vm *VM) f32Const() {

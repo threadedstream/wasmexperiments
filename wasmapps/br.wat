@@ -23,7 +23,7 @@
         (i32.const 0x0)
         (local.get 0x0)
         (i32.eq)
-        (if 
+        (if (result i32)
             (then
                 i32.const 1
                 return
@@ -35,7 +35,6 @@
                 return 
             )
         )  
-        i32.const 0
         return 
     )
 )

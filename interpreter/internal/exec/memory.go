@@ -22,14 +22,14 @@ var (
 )
 
 func (vm *VM) getLocal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*LocalGetI)
+	in := vm.currIns().(*LocalGetI)
 	index := in.arg0.(uint32)
 	vm.pushUint64(vm.ctx.locals[index])
 	vm.ctx.pc++
 }
 
 func (vm *VM) setLocal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*LocalSetI)
+	in := vm.currIns().(*LocalSetI)
 	index := in.arg0.(uint32)
 	value := vm.popUint64()
 	vm.ctx.locals[index] = value
@@ -37,14 +37,14 @@ func (vm *VM) setLocal() {
 }
 
 func (vm *VM) getGlobal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*GlobalGetI)
+	in := vm.currIns().(*GlobalGetI)
 	index := in.arg0.(uint32)
 	vm.pushUint64(vm.globals[index])
 	vm.ctx.pc++
 }
 
 func (vm *VM) setGlobal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*GlobalSetI)
+	in := vm.currIns().(*GlobalSetI)
 	index := in.arg0.(uint32)
 	value := vm.popUint64()
 	vm.globals[index] = value
@@ -56,7 +56,7 @@ func (vm *VM) teeLocal() {
 }
 
 func (vm *VM) i32Load() {
-	in := vm.ctx.ins[vm.ctx.pc].(*I32LoadI)
+	in := vm.currIns().(*I32LoadI)
 	base := int(vm.peekUint32())
 	ioff := int(in.arg1.(int32))
 	off := 3
@@ -69,7 +69,7 @@ func (vm *VM) i32Load() {
 }
 
 func (vm *VM) i32Store() {
-	in := vm.ctx.ins[vm.ctx.pc].(*I32StoreI)
+	in := vm.currIns().(*I32StoreI)
 	val := vm.popUint32()
 	base := int(vm.peekUint32())
 	ioff := int(in.arg1.(int32))

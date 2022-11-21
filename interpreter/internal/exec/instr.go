@@ -87,13 +87,13 @@ func newSingleArgI(op Op, arg0 any) Instr {
 	default:
 		reporter.ReportError("unexpected single arg instruction with opcode %v", op.Code)
 	case i32ConstOp:
-		return I32ConstI{inner}
+		return &I32ConstI{inner}
 	case callOp:
-		return CallI{inner}
+		return &CallI{inner}
 	case localGetOp:
-		return LocalGetI{inner}
+		return &LocalGetI{inner}
 	case globalGetOp:
-		return GlobalGetI{inner}
+		return &GlobalGetI{inner}
 	}
 	panic("unreachable")
 }
@@ -114,11 +114,11 @@ func newNoArgI(op Op) Instr {
 	default:
 		reporter.ReportError("unexpected no arg instruction with opcode %v", op.Code)
 	case i32EqOp:
-		return I32EqI{inner}
+		return &I32EqI{inner}
 	case endOp:
-		return EndI{inner}
+		return &EndI{inner}
 	case returnOp:
-		return RetI{inner}
+		return &RetI{inner}
 	}
 	panic("unreachable")
 }

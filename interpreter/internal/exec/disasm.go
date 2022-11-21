@@ -67,6 +67,7 @@ func dis(reader *wasm_reader.WasmReader, context string) ([]Instr, Bytecode, err
 
 func disIf(reader *wasm_reader.WasmReader) (*IfI, error) {
 	in := new(IfI)
+	in.commonI = commonI{op: lookupOp(ifOp)}
 	err := in.resolveBlockType(reader)
 	if err != nil {
 		return nil, err
