@@ -13,8 +13,8 @@ var (
 	globalSetOp = newVarargOp("global.set", 0x24)
 	i32LoadOp   = newOp("i32.load", 0x28, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
 	f32LoadOp   = newOp("f32.load", 0x2a, types.ValueTypeDoubleI32, types.ValueTypeSingleF32)
-	i32StoreOp  = newOp("i32.store", 0x36, types.ValueTypeDoubleI32, types.ValueTypeEmpty)
-	f32StoreOp  = newOp("f32.store", 0x38, types.ValueTypeDoubleI32, types.ValueTypeEmpty)
+	i32StoreOp  = newOp("i32.store", 0x36, types.ValueTypeDoubleI32, types.ValueTypeVoid)
+	f32StoreOp  = newOp("f32.store", 0x38, types.ValueTypeDoubleI32, types.ValueTypeVoid)
 )
 
 var (
@@ -22,14 +22,14 @@ var (
 )
 
 func (vm *VM) getLocal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*I32LocalGetI)
+	in := vm.ctx.ins[vm.ctx.pc].(*LocalGetI)
 	index := in.arg0.(uint32)
 	vm.pushUint64(vm.ctx.locals[index])
 	vm.ctx.pc++
 }
 
 func (vm *VM) setLocal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*I32LocalSetI)
+	in := vm.ctx.ins[vm.ctx.pc].(*LocalSetI)
 	index := in.arg0.(uint32)
 	value := vm.popUint64()
 	vm.ctx.locals[index] = value
@@ -37,14 +37,14 @@ func (vm *VM) setLocal() {
 }
 
 func (vm *VM) getGlobal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*I32GlobalGetI)
+	in := vm.ctx.ins[vm.ctx.pc].(*GlobalGetI)
 	index := in.arg0.(uint32)
 	vm.pushUint64(vm.globals[index])
 	vm.ctx.pc++
 }
 
 func (vm *VM) setGlobal() {
-	in := vm.ctx.ins[vm.ctx.pc].(*I32GlobalSetI)
+	in := vm.ctx.ins[vm.ctx.pc].(*GlobalSetI)
 	index := in.arg0.(uint32)
 	value := vm.popUint64()
 	vm.globals[index] = value

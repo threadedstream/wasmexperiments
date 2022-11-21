@@ -88,6 +88,10 @@ func ReadVarInt32(wr *wasm_reader.WasmReader) (int32, error) {
 	return int32(val), err
 }
 
+func ReadVarInt33(wr *wasm_reader.WasmReader) (int64, error) {
+	return readVarInt(wr, 33)
+}
+
 func ReadVarInt64(wr *wasm_reader.WasmReader) (int64, error) {
 	return readVarInt(wr, 64)
 }

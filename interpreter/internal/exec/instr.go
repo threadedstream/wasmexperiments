@@ -3,6 +3,8 @@ package exec
 import (
 	"fmt"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
+	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
+	"github.com/threadedstream/wasmexperiments/internal/types"
 	"strings"
 )
 
@@ -76,11 +78,49 @@ func (si singleArgI) String() string {
 	return s.String()
 }
 
-func newSingleArgI[T any](op Op, arg0 T) Instr {
-	switch op.Code {
-
+func newSingleArgI(op Op, arg0 any) Instr {
+	inner := singleArgI{
+		commonI: commonI{op: op},
+		arg0:    arg0,
 	}
-	return nil
+	switch op.Code {
+	default:
+		reporter.ReportError("unexpected single arg instruction with opcode %v", op.Code)
+	case i32ConstOp:
+		return I32ConstI{inner}
+	case callOp:
+		return CallI{inner}
+	case localGetOp:
+		return LocalGetI{inner}
+	case globalGetOp:
+		return GlobalGetI{inner}
+	}
+	panic("unreachable")
+}
+
+type noArgI struct {
+	commonI
+}
+
+func (na noArgI) String() string {
+	return na.Op().Name + " "
+}
+
+func newNoArgI(op Op) Instr {
+	inner := noArgI{
+		commonI: commonI{op},
+	}
+	switch op.Code {
+	default:
+		reporter.ReportError("unexpected no arg instruction with opcode %v", op.Code)
+	case i32EqOp:
+		return I32EqI{inner}
+	case endOp:
+		return EndI{inner}
+	case returnOp:
+		return RetI{inner}
+	}
+	panic("unreachable")
 }
 
 type (
@@ -104,10 +144,6 @@ type (
 		doubleArgI
 	}
 
-	I32EqI struct {
-		singleArgI
-	}
-
 	I32LoadI struct {
 		doubleArgI
 	}
@@ -120,19 +156,19 @@ type (
 		singleArgI
 	}
 
-	I32LocalGetI struct {
+	LocalGetI struct {
 		singleArgI
 	}
 
-	I32GlobalGetI struct {
+	GlobalGetI struct {
 		singleArgI
 	}
 
-	I32LocalSetI struct {
+	LocalSetI struct {
 		doubleArgI
 	}
 
-	I32GlobalSetI struct {
+	GlobalSetI struct {
 		doubleArgI
 	}
 
@@ -140,11 +176,41 @@ type (
 		singleArgI
 	}
 
+	I32EqI struct {
+		noArgI
+	}
+
+	EndI struct {
+		noArgI
+	}
+
+	RetI struct {
+		noArgI
+	}
+
 	IfI struct {
-		body     []Instr
-		elseBody []Instr
+		commonI
+		body      []Instr
+		elseBody  []Instr
+		blockType types.BlockType
 	}
 )
+
+func (i *IfI) resolveBlockType(reader *wasm_reader.WasmReader) error {
+	b, err := reader.ReadByte()
+	if err != nil {
+		return err
+	}
+	switch valty := types.ValueType(b); valty {
+	default:
+		i.blockType = types.OtherBlockType{X: int64(valty)}
+	case types.ValueTypeEmpty:
+		i.blockType = types.EmptyBlockType{}
+	case types.ValueTypeI32, types.ValueTypeF32, types.ValueTypeI64, types.ValueTypeF64, types.ValueTypeVector, types.ValueTypeFuncRef, types.ValueTypeExternRef:
+		i.blockType = types.ResultBlockType{Ty: valty}
+	}
+	return nil
+}
 
 func Dump(is []Instr) {
 	s := strings.Builder{}

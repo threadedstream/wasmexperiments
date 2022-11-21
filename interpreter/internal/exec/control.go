@@ -3,10 +3,11 @@ package exec
 import "github.com/threadedstream/wasmexperiments/internal/types"
 
 var (
-	callOp = newOp("call", 0x10, types.ValueTypeSingleI32, types.ValueTypeEmpty)
-	ifOp   = newOp("if", 0x04, types.ValueTypeSingleI32, types.ValueTypeEmpty)
-	elseOp = newOp("else", 0x05, types.ValueTypeSingleI32, types.ValueTypeEmpty)
-	endOp  = newOp("end", 0x0B, types.ValueTypeEmpty, types.ValueTypeEmpty)
+	callOp   = newOp("call", 0x10, types.ValueTypeSingleI32, types.ValueTypeVoid)
+	ifOp     = newOp("if", 0x04, types.ValueTypeSingleI32, types.ValueTypeVoid)
+	elseOp   = newOp("else", 0x05, types.ValueTypeSingleI32, types.ValueTypeVoid)
+	endOp    = newOp("end", 0x0B, types.ValueTypeVoid, types.ValueTypeVoid)
+	returnOp = newOp("return", 0x0F, types.ValueTypeVoid, types.ValueTypeVoid)
 )
 
 func (vm *VM) execIf() {

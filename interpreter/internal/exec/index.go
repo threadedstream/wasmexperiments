@@ -92,6 +92,7 @@ func (m *Module) initializeFunctionIndexSpace() {
 
 	m.FunctionIndexSpace = make([]*Function, requiredLen)
 	if m.ImportSection != nil {
+		// TODO(threadedstream): most likely that it's not a correct way to populate function index space with imported functions
 		for i := 0; i < len(m.ImportSection.Entries); i++ {
 			m.FunctionIndexSpace[i] = &Function{
 				code:      m.CodeSection.Entries[i].Code,
@@ -103,13 +104,15 @@ func (m *Module) initializeFunctionIndexSpace() {
 	}
 
 	if m.FunctionSection != nil {
-		for _, idx := range m.FunctionSection.Indices {
+		idx := 0
+		for _, typeIdx := range m.FunctionSection.Indices {
 			m.FunctionIndexSpace[idx] = &Function{
 				code:      m.CodeSection.Entries[idx].Code,
 				name:      "",
-				numParams: len(m.TypesSection.sigs[idx].Params),
-				returns:   m.TypesSection.sigs[idx].Results[0] != 0,
+				numParams: len(m.TypesSection.sigs[typeIdx].Params),
+				returns:   m.TypesSection.sigs[typeIdx].Results[0] != 0,
 			}
+			idx++
 		}
 	}
 }

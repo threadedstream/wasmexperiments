@@ -102,10 +102,9 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	//	return nil, fmt.Errorf("attempting to call a function with an index %d with length of funcs being %d", index, len(vm.funcs))
 	//}
 
-	// validate number of arguments
+	// TODO(threadedstream): resolves to nil should the function of the following form be called
+	// (func $fac (export "fac") (param $x i32) (result i32)
 	fn := vm.module.GetFunction(int(index))
-
-	// assuming it's already compiled, it's true though, we don't parse any frontend
 
 	return fn.call(vm, index, args...)
 }
