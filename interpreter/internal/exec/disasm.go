@@ -54,7 +54,7 @@ func dis(reader *wasm_reader.WasmReader, context string) ([]Instr, Bytecode, err
 		return nil, lastOp, err
 	}
 
-	if context == "if" && lastOp != endOp && lastOp != elseOp {
+	if (context == "if" || context == "block" || context == "loop") && lastOp != endOp && lastOp != elseOp {
 		return nil, lastOp, errors.New("dis: if must be terminated by else of end instruction")
 	}
 
@@ -63,6 +63,37 @@ func dis(reader *wasm_reader.WasmReader, context string) ([]Instr, Bytecode, err
 	}
 
 	return out, lastOp, nil
+}
+
+func disBlock(reader *wasm_reader.WasmReader) (*BlockI, error) {
+	in := new(BlockI)
+	in.commonI = commonI{op: lookupOp(blockOp)}
+	err := in.resolveBlockType(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	blockBody, _, err := dis(reader, "block")
+	if err != nil {
+		return nil, err
+	}
+	in.body = blockBody
+	return in, nil
+}
+
+func disLoop(reader *wasm_reader.WasmReader) (*LoopI, error) {
+	in := new(LoopI)
+	in.commonI = commonI{op: lookupOp(loopOp)}
+	err := in.resolveBlockType(reader)
+	if err != nil {
+		return nil, err
+	}
+	loopBody, _, err := dis(reader, "loop")
+	if err != nil {
+		return nil, err
+	}
+	in.body = loopBody
+	return in, nil
 }
 
 func disIf(reader *wasm_reader.WasmReader) (*IfI, error) {
@@ -125,6 +156,30 @@ func decodeIns(op Op, reader *wasm_reader.WasmReader, context string) (Instr, er
 			return nil, err
 		}
 		return ifI, nil
+	case blockOp:
+		blockI, err := disBlock(reader)
+		if err != nil {
+			return nil, err
+		}
+		return blockI, nil
+	case loopOp:
+		loopI, err := disLoop(reader)
+		if err != nil {
+			return nil, err
+		}
+		return loopI, nil
+	case brOp:
+		imm, e := wbinary.ReadVarUint32(reader)
+		if e != nil {
+			return nil, e
+		}
+		return newSingleArgI(op, imm), nil
+	case brIfOp:
+		imm, e := wbinary.ReadVarUint32(reader)
+		if e != nil {
+			return nil, e
+		}
+		return newSingleArgI(op, imm), nil
 	case elseOp:
 		// check if else is inside if
 		if context != "if" {
@@ -132,7 +187,7 @@ func decodeIns(op Op, reader *wasm_reader.WasmReader, context string) (Instr, er
 		}
 		// don't do anything with it, just return both nils
 		return nil, nil
-	case endOp, i32EqOp, returnOp:
+	case endOp, i32EqOp, returnOp, i32LtSOp:
 		return newNoArgI(op), nil
 	}
 }

@@ -19,22 +19,32 @@
         (i32.const 0x1)
     )
 
-    (func (export "fac") (param $x i32) (result i32)
-        (i32.const 0x0)
-        (local.get 0x0)
-        (i32.eq)
-        (if (result i32)
-            (then
-                i32.const 1
-                return
-            )
-            (else 
-                i32.const 1
-                local.get 0
-                i32.sub
-                return 
-            )
-        )  
-        return 
+    (func (export "fac") (param $x i32) (param $y i32) (result i32)
+        (i32.const 0x10)
+        (local.tee $x)
+        (return)
     )
+
+    (func (export "block_test") (param $x i32) (result i32)
+        (block $l (result i32)
+            ;; x = x + 1
+            (local.get 0)
+            (i32.const 0x1)
+            (i32.add)
+            (local.set 0)
+            
+            ;; x < 10?
+            (local.get 0)
+            (i32.const 0xA)
+            (i32.lt_s) 
+            ;; jump to myblock if it is
+            (i32.const 0x1)
+            (return)
+            (br_if $l)
+        )        
+
+        (local.get 0)
+        (return)
+    ) 
 )
+

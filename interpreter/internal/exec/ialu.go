@@ -17,6 +17,7 @@ var (
 	i32DivUOp  = newOp("i32.div_u", 0x6E, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
 	i32RemSOp  = newOp("i32.rem_s", 0x6F, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
 	i32RemUOp  = newOp("i32.rem_u", 0x70, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
+	i32LtSOp   = newOp("i32.lt_s", 0x48, types.ValueTypeDoubleI32, types.ValueTypeSingleI32)
 )
 
 func (vm *VM) i32Clz() {

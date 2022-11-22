@@ -94,6 +94,12 @@ func newSingleArgI(op Op, arg0 any) Instr {
 		return &LocalGetI{inner}
 	case globalGetOp:
 		return &GlobalGetI{inner}
+	case localSetOp:
+		return &LocalSetI{inner}
+	case brOp:
+		return &BrI{inner, ""}
+	case brIfOp:
+		return &BrIfI{inner, ""}
 	}
 	panic("unreachable")
 }
@@ -119,8 +125,31 @@ func newNoArgI(op Op) Instr {
 		return &EndI{inner}
 	case returnOp:
 		return &RetI{inner}
+	case i32LtSOp:
+		return &I32LtSI{inner}
 	}
 	panic("unreachable")
+}
+
+type blockTypedI struct {
+	commonI
+	blockType types.BlockType
+}
+
+func (i *blockTypedI) resolveBlockType(reader *wasm_reader.WasmReader) error {
+	b, err := reader.ReadByte()
+	if err != nil {
+		return err
+	}
+	switch valty := types.ValueType(b); valty {
+	default:
+		i.blockType = types.OtherBlockType{X: int64(valty)}
+	case types.ValueTypeEmpty:
+		i.blockType = types.EmptyBlockType{}
+	case types.ValueTypeI32, types.ValueTypeF32, types.ValueTypeI64, types.ValueTypeF64, types.ValueTypeVector, types.ValueTypeFuncRef, types.ValueTypeExternRef:
+		i.blockType = types.ResultBlockType{Ty: valty}
+	}
+	return nil
 }
 
 type (
@@ -165,11 +194,11 @@ type (
 	}
 
 	LocalSetI struct {
-		doubleArgI
+		singleArgI
 	}
 
 	GlobalSetI struct {
-		doubleArgI
+		singleArgI
 	}
 
 	CallI struct {
@@ -188,29 +217,36 @@ type (
 		noArgI
 	}
 
+	I32LtSI struct {
+		noArgI
+	}
+
 	IfI struct {
-		commonI
-		body      []Instr
-		elseBody  []Instr
-		blockType types.BlockType
+		blockTypedI
+		body     []Instr
+		elseBody []Instr
+	}
+
+	BlockI struct {
+		blockTypedI
+		body []Instr
+	}
+
+	LoopI struct {
+		blockTypedI
+		body []Instr
+	}
+
+	BrI struct {
+		singleArgI
+		context string // useful when executing "br" inside "block" or "loop" constructs
+	}
+
+	BrIfI struct {
+		singleArgI
+		context string // useful when executing "br_if" inside "block" or "loop" constructs
 	}
 )
-
-func (i *IfI) resolveBlockType(reader *wasm_reader.WasmReader) error {
-	b, err := reader.ReadByte()
-	if err != nil {
-		return err
-	}
-	switch valty := types.ValueType(b); valty {
-	default:
-		i.blockType = types.OtherBlockType{X: int64(valty)}
-	case types.ValueTypeEmpty:
-		i.blockType = types.EmptyBlockType{}
-	case types.ValueTypeI32, types.ValueTypeF32, types.ValueTypeI64, types.ValueTypeF64, types.ValueTypeVector, types.ValueTypeFuncRef, types.ValueTypeExternRef:
-		i.blockType = types.ResultBlockType{Ty: valty}
-	}
-	return nil
-}
 
 func Dump(is []Instr) {
 	s := strings.Builder{}

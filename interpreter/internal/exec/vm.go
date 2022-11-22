@@ -11,6 +11,8 @@ const (
 )
 
 type context struct {
+	id      uint32
+	parent  *context // useful in blocks
 	stack   []uint64
 	locals  []uint64
 	raw     []byte
@@ -22,13 +24,15 @@ type context struct {
 type VM struct {
 	ctx       *context
 	frames    []*context
+	labels    map[uint32]*context
 	module    *Module
 	globals   []uint64
 	memory    []byte
 	funcs     []Function
 	funcTable map[Bytecode]func()
 	// for quick querying
-	funcMap map[string]uint32
+	funcMap      map[string]uint32
+	blockCounter uint32
 }
 
 func NewVM(m *Module) (*VM, error) {
@@ -74,6 +78,10 @@ func NewVM(m *Module) (*VM, error) {
 func (vm *VM) initFuncTable() {
 	if vm.funcTable == nil {
 		vm.funcTable = map[Bytecode]func(){
+			blockOp:     vm.execBlock,
+			brIfOp:      vm.execBrIf,
+			brOp:        vm.execBr,
+			loopOp:      vm.execLoop,
 			ifOp:        vm.execIf,
 			returnOp:    vm.ret,
 			i32EqOp:     vm.i32Eq,
