@@ -31,7 +31,6 @@ func (vm *VM) execBlock() {
 		isBlock: true,
 	}
 	vm.ctx = newCtx
-	vm.blockCounter++
 	retVal = vm.execCode()
 	switch bt := in.blockType.(type) {
 	case types.EmptyBlockType:
@@ -61,6 +60,45 @@ func (vm *VM) execBlock() {
 }
 
 func (vm *VM) execBr() {
+	in := vm.currIns().(*BrI)
+	if in.context == "block" {
+		vm.ctx.breakExecuted = true
+		var temp uint64
+		if len(vm.ctx.stack) > 0 {
+			temp = vm.popUint64()
+		}
+		off := in.arg0.(uint32)
+		neededCtx := vm.ctx
+		idx := uint32(0)
+		for idx < off {
+			neededCtx = neededCtx.parent
+			idx++
+		}
+		vm.ctx = neededCtx.parent
+		vm.pushUint64(temp)
+	} else if in.context == "loop" {
+		var temp uint64
+		if len(vm.ctx.stack) > 0 {
+			temp = vm.popUint64()
+		}
+		off := in.arg0.(uint32)
+		neededCtx := vm.ctx
+		idx := uint32(0)
+		for idx < off {
+			neededCtx = neededCtx.parent
+			idx++
+		}
+		if neededCtx.isBlock {
+			neededCtx.breakExecuted = true
+			vm.ctx = neededCtx.parent
+			vm.pushUint64(temp)
+		} else {
+			// because vm.ctx.pc++ is executed at the end
+			neededCtx.pc = -1
+			vm.ctx = neededCtx
+		}
+	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) execBrIf() {
@@ -89,13 +127,69 @@ func (vm *VM) execBrIf() {
 			vm.ctx = neededCtx.parent
 			vm.pushUint64(temp)
 		} else if in.context == "loop" {
-			panic("loop: todo!")
+			var temp uint64
+			if len(vm.ctx.stack) > 0 {
+				temp = vm.popUint64()
+			}
+			off := in.arg0.(uint32)
+			neededCtx := vm.ctx
+			idx := uint32(0)
+			for idx < off {
+				neededCtx = neededCtx.parent
+				idx++
+			}
+			if neededCtx.isBlock {
+				neededCtx.breakExecuted = true
+				vm.ctx = neededCtx.parent
+				vm.pushUint64(temp)
+			} else {
+				// because vm.ctx.pc++ is executed at the end
+				neededCtx.pc = -1
+				vm.ctx = neededCtx
+			}
 		}
 	}
 	vm.ctx.pc++
 }
 
 func (vm *VM) execLoop() {
+	var retVal any
+	in := vm.currIns().(*LoopI)
+	newCtx := &context{
+		parent:  vm.ctx,
+		stack:   make([]uint64, 0, maxDepth),
+		locals:  vm.ctx.locals,
+		raw:     vm.ctx.raw,
+		ins:     in.body,
+		curFunc: vm.ctx.curFunc,
+	}
+	vm.ctx = newCtx
+	retVal = vm.execCode()
+	switch bt := in.blockType.(type) {
+	case types.EmptyBlockType:
+		break
+	case types.ResultBlockType:
+		v := retVal.(int64)
+		switch bt.Ty {
+		case types.ValueTypeI32:
+			vm.pushInt32(int32(v))
+		case types.ValueTypeI64:
+			vm.pushInt64(v)
+		case types.ValueTypeF32:
+			// not sure if that's going to work with floats, though
+			vm.pushFloat32(math.Float32frombits(uint32(v)))
+		case types.ValueTypeF64:
+			vm.pushFloat64(math.Float64frombits(uint64(v)))
+		}
+	case types.OtherBlockType:
+		reporter.ReportError("unknown result type with value %d", bt.X)
+	}
+
+	if newCtx.breakExecuted || vm.returned {
+		return
+	}
+
+	vm.ctx.pc++
 }
 
 func (vm *VM) execIf() {

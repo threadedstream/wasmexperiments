@@ -70,5 +70,37 @@
         (i32.const 0x20)
         (return)
     )
+
+    (func (export "loop_test") (param $x i32) (result i32)
+        (loop $outer 
+            (local.get $x)
+            (i32.const 0x1)
+            (i32.add)
+            (local.set $x)
+            (local.get $x)
+            (i32.const 0xA)
+            (i32.lt_s)
+            (br_if $outer)
+        )
+        (local.get $x)
+    )
+
+    (func (export "tricky_loop_test") (param $x i32) (result i32)
+        (block $outer 
+            (loop $inner 
+                (local.get $x)
+                (i32.const 0x1)
+                (i32.add)
+                (local.set $x)
+                (local.get $x)
+                (i32.const 0xA)
+                (i32.lt_s)
+                (br_if $inner)
+                (br $outer)
+            )
+        )
+        (local.get $x)
+    )
+
 )
 
