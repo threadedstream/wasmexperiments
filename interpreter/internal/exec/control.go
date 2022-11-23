@@ -23,24 +23,19 @@ func (vm *VM) execBlock() {
 	in := vm.currIns().(*BlockI)
 	newCtx := &context{
 		parent:  vm.ctx,
-		stack:   make([]uint64, maxDepth),
+		stack:   make([]uint64, 0, maxDepth),
 		locals:  vm.ctx.locals,
 		raw:     vm.ctx.raw,
 		ins:     in.body,
 		curFunc: vm.ctx.curFunc,
+		isBlock: true,
 	}
-	vm.frames = append(vm.frames, newCtx)
 	vm.ctx = newCtx
-	vm.labels[vm.blockCounter] = newCtx
 	vm.blockCounter++
 	retVal = vm.execCode()
-	vm.frames = vm.frames[:len(vm.frames)-1]
-	// blindly accept that vm.frames always has at least one frame at this point
-	vm.ctx = vm.frames[len(vm.frames)-1]
-
 	switch bt := in.blockType.(type) {
 	case types.EmptyBlockType:
-		return
+		break
 	case types.ResultBlockType:
 		v := retVal.(int64)
 		switch bt.Ty {
@@ -57,6 +52,11 @@ func (vm *VM) execBlock() {
 	case types.OtherBlockType:
 		reporter.ReportError("unknown result type with value %d", bt.X)
 	}
+
+	if newCtx.breakExecuted || vm.returned {
+		return
+	}
+
 	vm.ctx.pc++
 }
 
@@ -69,27 +69,30 @@ func (vm *VM) execBrIf() {
 	// decide if we enter "if" body
 	val := vm.popUint32()
 
-	// block -> block -> block
-	//	block
-	//	 block
+	// block
+	// 		br outer
+	//
 	if val > 0 {
 		if in.context == "block" {
-			ctx := vm.labels[in.arg0.(uint32)]
-			if ctx.parent != nil {
-				if len(vm.ctx.stack) > 0 {
-					vm.popUint64()
-				}
-				vm.ctx = ctx.parent
+			vm.ctx.breakExecuted = true
+			var temp uint64
+			if len(vm.ctx.stack) > 0 {
+				temp = vm.popUint64()
 			}
-			panic("block: todo!")
+			off := in.arg0.(uint32)
+			neededCtx := vm.ctx
+			idx := uint32(0)
+			for idx < off {
+				neededCtx = neededCtx.parent
+				idx++
+			}
+			vm.ctx = neededCtx.parent
+			vm.pushUint64(temp)
 		} else if in.context == "loop" {
-			ctx := vm.labels[in.arg0.(uint32)]
-			if ctx != nil {
-				vm.ctx = ctx
-			}
 			panic("loop: todo!")
 		}
 	}
+	vm.ctx.pc++
 }
 
 func (vm *VM) execLoop() {
@@ -102,7 +105,7 @@ func (vm *VM) execIf() {
 	val := vm.popUint32()
 	if val > 0 {
 		newCtx := &context{
-			stack:   make([]uint64, maxDepth),
+			stack:   make([]uint64, 0, maxDepth),
 			locals:  vm.ctx.locals,
 			raw:     vm.ctx.raw,
 			ins:     in.body,
@@ -155,6 +158,5 @@ func (vm *VM) execIf() {
 }
 
 func (vm *VM) ret() {
-	// don't do anything yet
-	vm.ctx.pc++
+	vm.returned = true
 }

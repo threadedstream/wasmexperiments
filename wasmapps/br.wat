@@ -46,5 +46,29 @@
         (local.get 0)
         (return)
     ) 
+
+    (func (export "multiblock_test") (param $x i32) (result i32)
+        (block $outer (result i32)
+            (block $inner (result i32)
+                ;; x = x + 1
+                (local.get 0)
+                (i32.const 0x1)
+                (i32.add)
+                (local.set 0)
+                
+                ;; x < 10?
+                (local.get 0)
+                (i32.const 0xA)
+                (i32.lt_s) 
+                ;; jump to myblock if it is
+                (i32.const 0x1)
+                (return)
+            )
+            (i32.const 0x10)
+            (return)
+        )        
+        (i32.const 0x20)
+        (return)
+    )
 )
 

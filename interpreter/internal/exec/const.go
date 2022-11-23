@@ -2,7 +2,12 @@ package exec
 
 func (vm *VM) i32Const() {
 	in := vm.currIns().(*I32ConstI)
-	vm.pushUint32(in.arg0.(uint32))
+	var val uint32
+	if v, ok := in.arg0.(uint64); ok {
+		val = uint32(v)
+	}
+	val = in.arg0.(uint32)
+	vm.pushUint32(val)
 	vm.ctx.pc++
 }
 

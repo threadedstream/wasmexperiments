@@ -173,13 +173,17 @@ func decodeIns(op Op, reader *wasm_reader.WasmReader, context string) (Instr, er
 		if e != nil {
 			return nil, e
 		}
-		return newSingleArgI(op, imm), nil
+		brI := newSingleArgI(op, imm).(*BrI)
+		brI.context = context
+		return brI, nil
 	case brIfOp:
 		imm, e := wbinary.ReadVarUint32(reader)
 		if e != nil {
 			return nil, e
 		}
-		return newSingleArgI(op, imm), nil
+		brIfI := newSingleArgI(op, imm).(*BrIfI)
+		brIfI.context = context
+		return brIfI, nil
 	case elseOp:
 		// check if else is inside if
 		if context != "if" {

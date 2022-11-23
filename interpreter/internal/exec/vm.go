@@ -11,20 +11,20 @@ const (
 )
 
 type context struct {
-	id      uint32
-	parent  *context // useful in blocks
-	stack   []uint64
-	locals  []uint64
-	raw     []byte
-	ins     []Instr
-	pc      int64
-	curFunc int64
+	parent        *context // useful in blocks
+	stack         []uint64
+	locals        []uint64
+	raw           []byte
+	ins           []Instr
+	pc            int64
+	curFunc       int64
+	isBlock       bool
+	breakExecuted bool
 }
 
 type VM struct {
 	ctx       *context
 	frames    []*context
-	labels    map[uint32]*context
 	module    *Module
 	globals   []uint64
 	memory    []byte
@@ -32,6 +32,7 @@ type VM struct {
 	funcTable map[Bytecode]func()
 	// for quick querying
 	funcMap      map[string]uint32
+	returned     bool
 	blockCounter uint32
 }
 
@@ -53,7 +54,6 @@ func NewVM(m *Module) (*VM, error) {
 	}
 
 	vm.globals = make([]uint64, len(m.GlobalIndexSpace))
-
 	vm.module = m
 
 	if m.ExportSection != nil {
@@ -84,6 +84,7 @@ func (vm *VM) initFuncTable() {
 			loopOp:      vm.execLoop,
 			ifOp:        vm.execIf,
 			returnOp:    vm.ret,
+			i32LtSOp:    vm.i32LtS,
 			i32EqOp:     vm.i32Eq,
 			i32AddOp:    vm.i32Add,
 			i32SubOp:    vm.i32Sub,
@@ -123,10 +124,11 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 }
 
 func (vm *VM) execCode() any {
-	code := vm.ctx.ins
-	endOff := len(code)
-	for int(vm.ctx.pc) < endOff {
-		currCode := code[vm.ctx.pc].Op().Code
+	for int(vm.ctx.pc) < len(vm.ctx.ins) {
+		if vm.returned {
+			break
+		}
+		currCode := vm.ctx.ins[vm.ctx.pc].Op().Code
 		if currCode == endOp {
 			vm.ctx.pc++
 			break

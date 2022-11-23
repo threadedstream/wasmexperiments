@@ -56,6 +56,7 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 	vm.frames = append(vm.frames, vm.ctx)
 
 	ret := fn.execCode(vm)
+
 	vm.frames = vm.frames[:len(vm.frames)-1]
 	if fn.returns {
 		return ret, nil
