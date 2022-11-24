@@ -80,7 +80,7 @@ func (vm *VM) peekInt32() int32 {
 }
 
 func (vm *VM) fetchUint64() uint64 {
-	val := binary.LittleEndian.Uint64(vm.ctx.raw[vm.ctx.pc:])
+	val := binary.LittleEndian.Uint64(vm.ctx.compiledCode[vm.ctx.pc:])
 	vm.ctx.pc += 8
 	return val
 }
@@ -90,7 +90,7 @@ func (vm *VM) fetchInt64() int64 {
 }
 
 func (vm *VM) fetchUint32() uint32 {
-	val := binary.LittleEndian.Uint32(vm.ctx.raw[vm.ctx.pc:])
+	val := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
 	vm.ctx.pc += 4
 	return val
 }
@@ -100,13 +100,13 @@ func (vm *VM) fetchInt32() int32 {
 }
 
 func (vm *VM) fetchFloat32() float32 {
-	val := binary.LittleEndian.Uint32(vm.ctx.raw[vm.ctx.pc:])
+	val := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
 	vm.ctx.pc += 4
 	return math.Float32frombits(val)
 }
 
 func (vm *VM) fetchFloat64() float64 {
-	val := binary.LittleEndian.Uint64(vm.ctx.raw[vm.ctx.pc:])
+	val := binary.LittleEndian.Uint64(vm.ctx.compiledCode[vm.ctx.pc:])
 	vm.ctx.pc += 8
 	return math.Float64frombits(val)
 }

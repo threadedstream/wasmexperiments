@@ -22,33 +22,29 @@ var (
 )
 
 func (vm *VM) getLocal() {
-	in := vm.currIns().(*LocalGetI)
-	index := in.arg0.(uint32)
+	index := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
 	vm.pushUint64(vm.ctx.locals[index])
-	vm.ctx.pc++
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) setLocal() {
-	in := vm.currIns().(*LocalSetI)
-	index := in.arg0.(uint32)
+	index := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
 	value := vm.popUint64()
 	vm.ctx.locals[index] = value
-	vm.ctx.pc++
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) getGlobal() {
-	in := vm.currIns().(*GlobalGetI)
-	index := in.arg0.(uint32)
+	index := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
 	vm.pushUint64(vm.globals[index])
-	vm.ctx.pc++
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) setGlobal() {
-	in := vm.currIns().(*GlobalSetI)
-	index := in.arg0.(uint32)
+	index := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
 	value := vm.popUint64()
 	vm.globals[index] = value
-	vm.ctx.pc++
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) teeLocal() {
@@ -56,30 +52,31 @@ func (vm *VM) teeLocal() {
 }
 
 func (vm *VM) i32Load() {
-	in := vm.currIns().(*I32LoadI)
 	base := int(vm.peekUint32())
-	ioff := int(in.arg1.(int32))
-	off := 3
-	if !vm.inBounds(base, ioff, off) {
+	align := int(binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:]))
+	if align != 2 {
+		panic("should have alignment of 2")
+	}
+	vm.ctx.pc += 4
+	off := int(binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:]))
+	vm.ctx.pc += 4
+	if !vm.inBounds(base, off, 3) {
 		panic(ErrOutOfMemory)
 	}
-	valueAt := vm.memory[(base + ioff):]
+	valueAt := vm.memory[(base + off):]
 	vm.pushUint32(binary.LittleEndian.Uint32(valueAt))
-	vm.ctx.pc++
 }
 
 func (vm *VM) i32Store() {
-	in := vm.currIns().(*I32StoreI)
 	val := vm.popUint32()
 	base := int(vm.peekUint32())
-	ioff := int(in.arg1.(int32))
-	off := 3
-	if !vm.inBounds(base, ioff, off) {
+	ioff := int(binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:]))
+	if !vm.inBounds(base, ioff, 3) {
 		panic(ErrOutOfMemory)
 	}
 	effAddr := vm.memory[(base + ioff):]
 	binary.LittleEndian.PutUint32(effAddr, val)
-	vm.ctx.pc++
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) f32Load() {

@@ -2,6 +2,45 @@ package exec
 
 // TODO(threadedstream): likely to get deprecated
 
+var (
+	funcTable map[Bytecode]func()
+)
+
+func (vm *VM) initFuncTable() {
+	if funcTable == nil {
+		funcTable = map[Bytecode]func(){
+			blockOp:     vm.execBlock,
+			brIfOp:      vm.execBrIfLoop,
+			brOp:        vm.execBrLoop,
+			loopOp:      vm.execLoop,
+			ifOp:        vm.execIf,
+			returnOp:    vm.ret,
+			i32LtSOp:    vm.i32LtS,
+			i32EqOp:     vm.i32Eq,
+			i32AddOp:    vm.i32Add,
+			i32SubOp:    vm.i32Sub,
+			i32MulOp:    vm.i32Mul,
+			i32DivSOp:   vm.i32DivS,
+			i32DivUOp:   vm.i32DivU,
+			i32RemSOp:   vm.i32RemS,
+			i32RemUOp:   vm.i32RemU,
+			f32AddOp:    vm.f32Add,
+			f32SubOp:    vm.f32Sub,
+			f32MulOp:    vm.f32Mul,
+			callOp:      vm.call,
+			localGetOp:  vm.getLocal,
+			localSetOp:  vm.setLocal,
+			globalGetOp: vm.getGlobal,
+			globalSetOp: vm.setGlobal,
+			i32ConstOp:  vm.i32Const,
+			i32LoadOp:   vm.i32Load,
+			f32LoadOp:   vm.f32Load,
+			i32StoreOp:  vm.i32Store,
+			f32StoreOp:  vm.f32Store,
+		}
+	}
+}
+
 //var (
 //	opTable = map[byte]func(){
 //		iBlock:

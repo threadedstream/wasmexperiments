@@ -1,14 +1,13 @@
 package exec
 
+import (
+	"encoding/binary"
+)
+
 func (vm *VM) i32Const() {
-	in := vm.currIns().(*I32ConstI)
-	var val uint32
-	if v, ok := in.arg0.(uint64); ok {
-		val = uint32(v)
-	}
-	val = in.arg0.(uint32)
-	vm.pushUint32(val)
-	vm.ctx.pc++
+	val := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
+	vm.pushInt32(int32(val))
+	vm.ctx.pc += 4
 }
 
 func (vm *VM) f32Const() {

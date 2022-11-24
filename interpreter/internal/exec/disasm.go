@@ -196,32 +196,56 @@ func decodeIns(op Op, reader *wasm_reader.WasmReader, context string) (Instr, er
 	}
 }
 
-// Compile is a reverse of Disassemble
-func Compile(is []Instr) ([]byte, error) {
+func Compile(code []byte) ([]byte, error) {
 	binaryFormat := binary.LittleEndian
 	// let the implementation allocate bytes on demand
-	byteStream := bytes.NewBuffer(nil)
-	for _, i := range is {
-		switch code := i.Op().Code; code {
-		case localGetOp, globalGetOp, callOp, i32ConstOp:
-			ins := i.(*singleArgI)
-			// does allocation happen if I use b[:]?
-			byteStream.WriteByte(byte(code))
-			var b [4]byte
-			binaryFormat.PutUint32(b[:], ins.arg0.(uint32))
-			byteStream.Write(b[:])
-		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp:
-			byteStream.WriteByte(byte(code))
-		case i32LoadOp, i32StoreOp:
-			ins := i.(*doubleArgI)
-			byteStream.WriteByte(byte(code))
+	writer := bytes.NewBuffer(nil)
+	reader := wasm_reader.NewWasmReader(bytes.NewBuffer(code))
+	var err error
+	var opcode byte
+	for err == nil {
+		opcode, err = reader.ReadByte()
+		switch Bytecode(opcode) {
+		case i32LoadOp:
+			writer.WriteByte(opcode)
+			var align, off uint32
+			align, err = wbinary.ReadVarUint32(reader)
+			if err != nil {
+				return nil, err
+			}
+			off, err = wbinary.ReadVarUint32(reader)
+			if err != nil {
+				return nil, err
+			}
 			var b [8]byte
-			binaryFormat.PutUint32(b[0:4], ins.arg0.(uint32))
-			binaryFormat.PutUint32(b[4:8], ins.arg1.(uint32))
-			byteStream.Write(b[:])
-		case endOp:
-			byteStream.WriteByte(byte(endOp))
+			binaryFormat.PutUint32(b[0:4], align)
+			binaryFormat.PutUint32(b[4:8], off)
+			writer.Write(b[:])
+		case localGetOp, globalGetOp, callOp, i32ConstOp:
+			writer.WriteByte(opcode)
+			var imm uint32
+			imm, err = wbinary.ReadVarUint32(reader)
+			if err != nil {
+				continue
+			}
+			var b [4]byte
+			binaryFormat.PutUint32(b[:], imm)
+			writer.Write(b[:])
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp:
+			writer.WriteByte(opcode)
 		}
+
 	}
-	return byteStream.Bytes(), nil
+	//	case i32LoadOp, i32StoreOp:
+	//		ins := i.(*doubleArgI)
+	//		byteStream.WriteByte(byte(code))
+	//		var b [8]byte
+	//		binaryFormat.PutUint32(b[0:4], ins.arg0.(uint32))
+	//		binaryFormat.PutUint32(b[4:8], ins.arg1.(uint32))
+	//		byteStream.Write(b[:])
+	//	case endOp:
+	//		byteStream.WriteByte(byte(endOp))
+	//	}
+	//}
+	return writer.Bytes(), nil
 }

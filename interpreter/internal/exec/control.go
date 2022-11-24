@@ -22,13 +22,13 @@ func (vm *VM) execBlock() {
 	var retVal any
 	in := vm.currIns().(*BlockI)
 	newCtx := &context{
-		parent:  vm.ctx,
-		stack:   make([]uint64, 0, maxDepth),
-		locals:  vm.ctx.locals,
-		raw:     vm.ctx.raw,
-		ins:     in.body,
-		curFunc: vm.ctx.curFunc,
-		isBlock: true,
+		parent:       vm.ctx,
+		stack:        make([]uint64, 0, maxDepth),
+		locals:       vm.ctx.locals,
+		compiledCode: vm.ctx.compiledCode,
+		ins:          in.body,
+		curFunc:      vm.ctx.curFunc,
+		isBlock:      true,
 	}
 	vm.ctx.pc++
 	vm.ctx = newCtx
@@ -192,12 +192,12 @@ func (vm *VM) execLoop() {
 	var retVal any
 	in := vm.currIns().(*LoopI)
 	newCtx := &context{
-		parent:  vm.ctx,
-		stack:   make([]uint64, 0, maxDepth),
-		locals:  vm.ctx.locals,
-		raw:     vm.ctx.raw,
-		ins:     in.body,
-		curFunc: vm.ctx.curFunc,
+		parent:       vm.ctx,
+		stack:        make([]uint64, 0, maxDepth),
+		locals:       vm.ctx.locals,
+		compiledCode: vm.ctx.compiledCode,
+		ins:          in.body,
+		curFunc:      vm.ctx.curFunc,
 	}
 	vm.ctx.pc++
 	vm.ctx = newCtx
@@ -235,11 +235,11 @@ func (vm *VM) execIf() {
 	val := vm.popUint32()
 	if val > 0 {
 		newCtx := &context{
-			stack:   make([]uint64, 0, maxDepth),
-			locals:  vm.ctx.locals,
-			raw:     vm.ctx.raw,
-			ins:     in.body,
-			curFunc: vm.ctx.curFunc,
+			stack:        make([]uint64, 0, maxDepth),
+			locals:       vm.ctx.locals,
+			compiledCode: vm.ctx.compiledCode,
+			ins:          in.body,
+			curFunc:      vm.ctx.curFunc,
 		}
 		vm.frames = append(vm.frames, newCtx)
 		vm.ctx = newCtx
@@ -250,11 +250,11 @@ func (vm *VM) execIf() {
 	} else {
 		if in.elseBody != nil {
 			newCtx := &context{
-				stack:   make([]uint64, 0, maxDepth),
-				locals:  vm.ctx.locals,
-				raw:     vm.ctx.raw,
-				ins:     in.elseBody,
-				curFunc: vm.ctx.curFunc,
+				stack:        make([]uint64, 0, maxDepth),
+				locals:       vm.ctx.locals,
+				compiledCode: vm.ctx.compiledCode,
+				ins:          in.elseBody,
+				curFunc:      vm.ctx.curFunc,
 			}
 			vm.frames = append(vm.frames, newCtx)
 			vm.ctx = newCtx

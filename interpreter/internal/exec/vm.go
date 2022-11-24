@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
+	"github.com/threadedstream/wasmexperiments/internal/pkg/wasm_reader"
 )
 
 const (
@@ -15,7 +16,7 @@ type context struct {
 	pendingContext *context
 	stack          []uint64
 	locals         []uint64
-	raw            []byte
+	compiledCode   []byte
 	ins            []Instr
 	pc             int64
 	curFunc        int64
@@ -24,14 +25,15 @@ type context struct {
 }
 
 type VM struct {
-	ctx       *context
-	frames    []*context
-	ctxchain  []*context
-	module    *Module
-	globals   []uint64
-	memory    []byte
-	funcs     []Function
-	funcTable map[Bytecode]func()
+	ctx      *context
+	frames   []*context
+	ctxchain []*context
+	module   *Module
+	globals  []uint64
+	memory   []byte
+	funcs    []Function
+	reader   *wasm_reader.WasmReader
+
 	// for quick querying
 	funcMap      map[string]uint32
 	returned     bool
@@ -77,41 +79,6 @@ func NewVM(m *Module) (*VM, error) {
 	return vm, nil
 }
 
-func (vm *VM) initFuncTable() {
-	if vm.funcTable == nil {
-		vm.funcTable = map[Bytecode]func(){
-			blockOp:     vm.execBlock,
-			brIfOp:      vm.execBrIfLoop,
-			brOp:        vm.execBrLoop,
-			loopOp:      vm.execLoop,
-			ifOp:        vm.execIf,
-			returnOp:    vm.ret,
-			i32LtSOp:    vm.i32LtS,
-			i32EqOp:     vm.i32Eq,
-			i32AddOp:    vm.i32Add,
-			i32SubOp:    vm.i32Sub,
-			i32MulOp:    vm.i32Mul,
-			i32DivSOp:   vm.i32DivS,
-			i32DivUOp:   vm.i32DivU,
-			i32RemSOp:   vm.i32RemS,
-			i32RemUOp:   vm.i32RemU,
-			f32AddOp:    vm.f32Add,
-			f32SubOp:    vm.f32Sub,
-			f32MulOp:    vm.f32Mul,
-			callOp:      vm.call,
-			localGetOp:  vm.getLocal,
-			localSetOp:  vm.setLocal,
-			globalGetOp: vm.getGlobal,
-			globalSetOp: vm.setGlobal,
-			i32ConstOp:  vm.i32Const,
-			i32LoadOp:   vm.i32Load,
-			f32LoadOp:   vm.f32Load,
-			i32StoreOp:  vm.i32Store,
-			f32StoreOp:  vm.f32Store,
-		}
-	}
-}
-
 func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	//// some validation of input parameters
 	//if int(index) > len(vm.funcs) {
@@ -122,7 +89,7 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	// (func $fac (export "fac") (param $x i32) (result i32)
 	fn := vm.module.GetFunction(int(index))
 
-	return fn.call(vm, index, args...)
+	return fn.call(vm, index, ExecutionModeRawBytecode, args...)
 }
 
 func (vm *VM) execCode() any {
@@ -136,7 +103,7 @@ func (vm *VM) execCode() any {
 			vm.ctx.pc++
 			break
 		}
-		if handler, ok := vm.funcTable[currCode]; ok {
+		if handler, ok := funcTable[currCode]; ok {
 			handler()
 			if vm.ctx.breakExecuted {
 				vm.ctx = vm.ctx.pendingContext
