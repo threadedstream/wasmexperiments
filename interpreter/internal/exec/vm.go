@@ -11,20 +11,22 @@ const (
 )
 
 type context struct {
-	parent        *context // useful in blocks
-	stack         []uint64
-	locals        []uint64
-	raw           []byte
-	ins           []Instr
-	pc            int64
-	curFunc       int64
-	isBlock       bool
-	breakExecuted bool
+	parent         *context // useful in blocks
+	pendingContext *context
+	stack          []uint64
+	locals         []uint64
+	raw            []byte
+	ins            []Instr
+	pc             int64
+	curFunc        int64
+	isBlock        bool
+	breakExecuted  bool
 }
 
 type VM struct {
 	ctx       *context
 	frames    []*context
+	ctxchain  []*context
 	module    *Module
 	globals   []uint64
 	memory    []byte
@@ -79,8 +81,8 @@ func (vm *VM) initFuncTable() {
 	if vm.funcTable == nil {
 		vm.funcTable = map[Bytecode]func(){
 			blockOp:     vm.execBlock,
-			brIfOp:      vm.execBrIf,
-			brOp:        vm.execBr,
+			brIfOp:      vm.execBrIfLoop,
+			brOp:        vm.execBrLoop,
 			loopOp:      vm.execLoop,
 			ifOp:        vm.execIf,
 			returnOp:    vm.ret,
@@ -125,9 +127,10 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 
 func (vm *VM) execCode() any {
 	for int(vm.ctx.pc) < len(vm.ctx.ins) {
-		if vm.returned {
+		if vm.returned || (vm.ctx.breakExecuted && vm.ctx.isBlock) {
 			break
 		}
+
 		currCode := vm.ctx.ins[vm.ctx.pc].Op().Code
 		if currCode == endOp {
 			vm.ctx.pc++
@@ -135,12 +138,21 @@ func (vm *VM) execCode() any {
 		}
 		if handler, ok := vm.funcTable[currCode]; ok {
 			handler()
+			if vm.ctx.breakExecuted {
+				vm.ctx = vm.ctx.pendingContext
+				if vm.ctx.isBlock {
+					vm.ctx.breakExecuted = true
+					vm.ctx = vm.ctx.parent
+					goto end
+				}
+				vm.ctx.breakExecuted = false
+				vm.ctx.pc = 0
+			}
 			continue
 		}
 		reporter.ReportError("execCode: unknown instruction with code %v\n", currCode)
 	}
-	if len(vm.ctx.stack) > 0 {
-		return vm.popInt64()
-	}
+
+end:
 	return nil
 }

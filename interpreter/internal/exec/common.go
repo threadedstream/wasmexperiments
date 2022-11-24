@@ -60,7 +60,7 @@ func (vm *VM) popInt32() int32 {
 // the same as popUint64, but doesn't pop value off the stack
 func (vm *VM) peekUint64() uint64 {
 	if len(vm.ctx.stack) == 0 {
-		reporter.ReportError("popUint64: stack's empty")
+		reporter.ReportError("peekUint64: stack's empty")
 	}
 	idx := len(vm.ctx.stack) - 1
 	val := vm.ctx.stack[idx]

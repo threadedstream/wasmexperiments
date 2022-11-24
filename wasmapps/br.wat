@@ -86,7 +86,12 @@
     )
 
     (func (export "tricky_loop_test") (param $x i32) (result i32)
+        ;; 1 
+        ;;  0
+        ;;   some code
+        ;; possible location to jump to 
         (block $outer 
+            ;; possible location to jump to 
             (loop $inner 
                 (local.get $x)
                 (i32.const 0x1)

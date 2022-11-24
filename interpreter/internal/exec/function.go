@@ -41,6 +41,7 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 		pc:      0,
 		curFunc: index,
 	}
+	vm.ctxchain = append(vm.ctxchain, vm.ctx)
 
 	for _, arg := range args {
 		vm.pushUint64(arg)
@@ -67,10 +68,10 @@ func (fn *Function) call(vm *VM, index int64, args ...uint64) (any, error) {
 
 func (fn *Function) execCode(vm *VM) any {
 	// check if function returns something
-	val := vm.execCode()
+	_ = vm.execCode()
 	if fn.returns {
-		if val != nil {
-			return val
+		if len(vm.ctx.stack) > 0 {
+			return vm.popUint64()
 		} else {
 			reporter.ReportError("expected to have return value on stack")
 		}

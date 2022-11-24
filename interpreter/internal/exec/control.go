@@ -30,7 +30,9 @@ func (vm *VM) execBlock() {
 		curFunc: vm.ctx.curFunc,
 		isBlock: true,
 	}
+	vm.ctx.pc++
 	vm.ctx = newCtx
+	vm.ctxchain = append(vm.ctxchain, newCtx)
 	retVal = vm.execCode()
 	switch bt := in.blockType.(type) {
 	case types.EmptyBlockType:
@@ -56,7 +58,6 @@ func (vm *VM) execBlock() {
 		return
 	}
 
-	vm.ctx.pc++
 }
 
 func (vm *VM) execBr() {
@@ -77,10 +78,6 @@ func (vm *VM) execBr() {
 		vm.ctx = neededCtx.parent
 		vm.pushUint64(temp)
 	} else if in.context == "loop" {
-		var temp uint64
-		if len(vm.ctx.stack) > 0 {
-			temp = vm.popUint64()
-		}
 		off := in.arg0.(uint32)
 		neededCtx := vm.ctx
 		idx := uint32(0)
@@ -88,17 +85,66 @@ func (vm *VM) execBr() {
 			neededCtx = neededCtx.parent
 			idx++
 		}
+
+		vm.ctx.breakExecuted = true
+		vm.ctx.pendingContext = neededCtx
 		if neededCtx.isBlock {
 			neededCtx.breakExecuted = true
-			vm.ctx = neededCtx.parent
-			vm.pushUint64(temp)
-		} else {
-			// because vm.ctx.pc++ is executed at the end
-			neededCtx.pc = -1
-			vm.ctx = neededCtx
 		}
+		neededCtx.pc = 0
 	}
 	vm.ctx.pc++
+}
+
+func (vm *VM) execBrBlock() {
+
+}
+
+func (vm *VM) execBrLoop() {
+	in := vm.currIns().(*BrI)
+	// specify location to jump to and start executing this thing over again
+	id := in.arg0.(uint32)
+	idx := len(vm.ctxchain) - int(id) - 1
+	neededCtx := vm.ctxchain[idx]
+	if neededCtx.isBlock {
+		neededCtx.pc = int64(len(neededCtx.ins))
+		vm.ctxchain = vm.ctxchain[:idx]
+		vm.ctx = vm.ctxchain[len(vm.ctxchain)-1]
+	} else {
+		vm.ctxchain = vm.ctxchain[:idx+1]
+		vm.ctx = vm.ctxchain[len(vm.ctxchain)-1]
+		vm.ctx.pc = 0
+	}
+}
+
+func (vm *VM) execBrIfBlock() {
+
+}
+
+func (vm *VM) execBrIfLoop() {
+	var _ any
+	in := vm.currIns().(*BrIfI)
+	val := vm.popUint32()
+	if val > 0 {
+		// specify location to jump to and start executing this thing over again
+		id := in.arg0.(uint32)
+		idx := len(vm.ctxchain) - int(id) - 1
+		neededCtx := vm.ctxchain[idx]
+		if neededCtx.isBlock {
+			neededCtx.pc = int64(len(neededCtx.ins))
+			vm.ctxchain = vm.ctxchain[:idx]
+			vm.ctx = vm.ctxchain[len(vm.ctxchain)-1]
+		} else {
+			// neededCtx
+			vm.ctxchain = vm.ctxchain[:idx+1]
+			vm.ctx = vm.ctxchain[len(vm.ctxchain)-1]
+			vm.ctx.pc = 0
+		}
+		// block->loop
+	} else {
+		// just increment pc
+		vm.ctx.pc++
+	}
 }
 
 func (vm *VM) execBrIf() {
@@ -107,9 +153,6 @@ func (vm *VM) execBrIf() {
 	// decide if we enter "if" body
 	val := vm.popUint32()
 
-	// block
-	// 		br outer
-	//
 	if val > 0 {
 		if in.context == "block" {
 			vm.ctx.breakExecuted = true
@@ -124,13 +167,10 @@ func (vm *VM) execBrIf() {
 				neededCtx = neededCtx.parent
 				idx++
 			}
+			// TODO(threadedstream): make use of pendingCtx
 			vm.ctx = neededCtx.parent
 			vm.pushUint64(temp)
 		} else if in.context == "loop" {
-			var temp uint64
-			if len(vm.ctx.stack) > 0 {
-				temp = vm.popUint64()
-			}
 			off := in.arg0.(uint32)
 			neededCtx := vm.ctx
 			idx := uint32(0)
@@ -138,14 +178,10 @@ func (vm *VM) execBrIf() {
 				neededCtx = neededCtx.parent
 				idx++
 			}
+			vm.ctx.breakExecuted = true
+			vm.ctx.pendingContext = neededCtx
 			if neededCtx.isBlock {
 				neededCtx.breakExecuted = true
-				vm.ctx = neededCtx.parent
-				vm.pushUint64(temp)
-			} else {
-				// because vm.ctx.pc++ is executed at the end
-				neededCtx.pc = -1
-				vm.ctx = neededCtx
 			}
 		}
 	}
@@ -163,7 +199,9 @@ func (vm *VM) execLoop() {
 		ins:     in.body,
 		curFunc: vm.ctx.curFunc,
 	}
+	vm.ctx.pc++
 	vm.ctx = newCtx
+	vm.ctxchain = append(vm.ctxchain, newCtx)
 	retVal = vm.execCode()
 	switch bt := in.blockType.(type) {
 	case types.EmptyBlockType:
@@ -188,8 +226,6 @@ func (vm *VM) execLoop() {
 	if newCtx.breakExecuted || vm.returned {
 		return
 	}
-
-	vm.ctx.pc++
 }
 
 func (vm *VM) execIf() {
