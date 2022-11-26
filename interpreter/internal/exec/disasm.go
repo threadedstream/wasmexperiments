@@ -21,11 +21,11 @@ func Disassemble(code []byte) ([]Instr, error) {
 	return out, err
 }
 
-func dis(reader *wasm_reader.WasmReader, context string) ([]Instr, Bytecode, error) {
+func dis(reader *wasm_reader.WasmReader, context string) ([]Instr, Opcode, error) {
 	var err error
 	var bytecode byte
 	var out []Instr
-	var lastOp Bytecode
+	var lastOp Opcode
 
 	for err == nil {
 		var in Instr
@@ -33,7 +33,7 @@ func dis(reader *wasm_reader.WasmReader, context string) ([]Instr, Bytecode, err
 		if err != nil {
 			continue
 		}
-		op := lookupOp(Bytecode(bytecode))
+		op := lookupOp(Opcode(bytecode))
 		if !op.IsValid() {
 			err = errInvalidOp
 			continue
@@ -205,7 +205,7 @@ func Compile(code []byte) ([]byte, error) {
 	var opcode byte
 	for err == nil {
 		opcode, err = reader.ReadByte()
-		switch Bytecode(opcode) {
+		switch Opcode(opcode) {
 		case i32LoadOp:
 			writer.WriteByte(opcode)
 			var align, off uint32
@@ -221,7 +221,7 @@ func Compile(code []byte) ([]byte, error) {
 			binaryFormat.PutUint32(b[0:4], align)
 			binaryFormat.PutUint32(b[4:8], off)
 			writer.Write(b[:])
-		case localGetOp, globalGetOp, callOp, i32ConstOp:
+		case localGetOp, globalGetOp, localSetOp, callOp, i32ConstOp, brIfOp, brOp:
 			writer.WriteByte(opcode)
 			var imm uint32
 			imm, err = wbinary.ReadVarUint32(reader)
@@ -231,8 +231,16 @@ func Compile(code []byte) ([]byte, error) {
 			var b [4]byte
 			binaryFormat.PutUint32(b[:], imm)
 			writer.Write(b[:])
-		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp:
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp, returnOp, endOp:
 			writer.WriteByte(opcode)
+		case blockOp, loopOp:
+			writer.WriteByte(opcode)
+			var imm uint8
+			imm, err = wbinary.ReadVarUint7(reader)
+			if err != nil {
+				continue
+			}
+			writer.WriteByte(imm)
 		}
 
 	}

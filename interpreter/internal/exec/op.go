@@ -5,16 +5,16 @@ import (
 	"log"
 )
 
-type Bytecode byte
+type Opcode byte
 
 var (
-	codeLookup = make(map[Bytecode]Op)
+	codeLookup = make(map[Opcode]Op)
 	invalidOp  = Op{IsInvalid: true}
 )
 
 type Op struct {
 	Name        string
-	Code        Bytecode
+	Code        Opcode
 	Vararg      bool
 	InputTypes  []types.ValueType
 	OutputTypes []types.ValueType
@@ -31,7 +31,7 @@ func newInvalidOp() Op {
 	return invalidOp
 }
 
-func newOp(name string, code Bytecode, inputTypes []types.ValueType, outputTypes []types.ValueType) Bytecode {
+func newOp(name string, code Opcode, inputTypes []types.ValueType, outputTypes []types.ValueType) Opcode {
 	if _, ok := codeLookup[code]; ok {
 		log.Panicf("instruction %#x already registered", code)
 	}
@@ -45,7 +45,7 @@ func newOp(name string, code Bytecode, inputTypes []types.ValueType, outputTypes
 	return code
 }
 
-func newVarargOp(name string, code Bytecode) Bytecode {
+func newVarargOp(name string, code Opcode) Opcode {
 	if _, ok := codeLookup[code]; ok {
 		log.Panicf("instruction %#x already registered", code)
 	}
@@ -60,7 +60,7 @@ func newVarargOp(name string, code Bytecode) Bytecode {
 	return code
 }
 
-func lookupOp(code Bytecode) Op {
+func lookupOp(code Opcode) Op {
 	if op, ok := codeLookup[code]; ok {
 		return op
 	}

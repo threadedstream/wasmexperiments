@@ -2,15 +2,20 @@ package exec
 
 import (
 	"encoding/binary"
-	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
+	"log"
 	"math"
 )
 
 func (vm *VM) pushUint64(n uint64) {
-	if len(vm.ctx.stack) >= cap(vm.ctx.stack) {
-		reporter.ReportError("stack exceeding max depth: len=%d,cap=%d", len(vm.ctx.stack), cap(vm.ctx.stack))
+	if len(vm.ctx.stack) == 0 {
+		log.Panic("pushUint64: no stack to push to")
 	}
-	vm.ctx.stack = append(vm.ctx.stack, n)
+	// select the topmost stack
+	stack := vm.ctx.stack[len(vm.ctx.stack)-1]
+	if len(stack) >= cap(stack) {
+		log.Panicf("stack exceeding max depth: len=%d,cap=%d", len(stack), cap(stack))
+	}
+	stack = append(stack, n)
 }
 
 func (vm *VM) pushInt64(n int64) {
@@ -37,11 +42,15 @@ func (vm *VM) pushOne() {
 
 func (vm *VM) popUint64() uint64 {
 	if len(vm.ctx.stack) == 0 {
-		reporter.ReportError("popUint64: stack's empty")
+		log.Panic("popUint64: no stack to pop from")
 	}
-	idx := len(vm.ctx.stack) - 1
-	val := vm.ctx.stack[idx]
-	vm.ctx.stack = vm.ctx.stack[:idx]
+	stack := vm.ctx.stack[len(vm.ctx.stack)-1]
+	if len(stack) == 0 {
+		log.Panic("popUint64: expected to have at least one argument in operand stack")
+	}
+	idx := len(stack) - 1
+	val := stack[idx]
+	stack = stack[:idx]
 	return val
 }
 
@@ -60,10 +69,14 @@ func (vm *VM) popInt32() int32 {
 // the same as popUint64, but doesn't pop value off the stack
 func (vm *VM) peekUint64() uint64 {
 	if len(vm.ctx.stack) == 0 {
-		reporter.ReportError("peekUint64: stack's empty")
+		log.Panic("popUint64: no stack to pop from")
 	}
-	idx := len(vm.ctx.stack) - 1
-	val := vm.ctx.stack[idx]
+	stack := vm.ctx.stack[len(vm.ctx.stack)-1]
+	if len(stack) == 0 {
+		log.Panic("popUint64: expected to have at least one argument in operand stack")
+	}
+	idx := len(stack) - 1
+	val := stack[idx]
 	return val
 }
 

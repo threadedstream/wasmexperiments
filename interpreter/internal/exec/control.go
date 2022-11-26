@@ -19,45 +19,8 @@ var (
 )
 
 func (vm *VM) execBlock() {
-	var retVal any
-	in := vm.currIns().(*BlockI)
-	newCtx := &context{
-		parent:       vm.ctx,
-		stack:        make([]uint64, 0, maxDepth),
-		locals:       vm.ctx.locals,
-		compiledCode: vm.ctx.compiledCode,
-		ins:          in.body,
-		curFunc:      vm.ctx.curFunc,
-		isBlock:      true,
-	}
-	vm.ctx.pc++
-	vm.ctx = newCtx
-	vm.ctxchain = append(vm.ctxchain, newCtx)
-	retVal = vm.execCode()
-	switch bt := in.blockType.(type) {
-	case types.EmptyBlockType:
-		break
-	case types.ResultBlockType:
-		v := retVal.(int64)
-		switch bt.Ty {
-		case types.ValueTypeI32:
-			vm.pushInt32(int32(v))
-		case types.ValueTypeI64:
-			vm.pushInt64(v)
-		case types.ValueTypeF32:
-			// not sure if that's going to work with floats, though
-			vm.pushFloat32(math.Float32frombits(uint32(v)))
-		case types.ValueTypeF64:
-			vm.pushFloat64(math.Float64frombits(uint64(v)))
-		}
-	case types.OtherBlockType:
-		reporter.ReportError("unknown result type with value %d", bt.X)
-	}
-
-	if newCtx.breakExecuted || vm.returned {
-		return
-	}
-
+	stack := make([]uint64, 0, maxDepth)
+	vm.ctx.stack = append(vm.ctx.stack, stack)
 }
 
 func (vm *VM) execBr() {
@@ -118,7 +81,11 @@ func (vm *VM) execBrLoop() {
 }
 
 func (vm *VM) execBrIfBlock() {
+	val := vm.popUint32()
+	if val > 0 {
+		// brIf
 
+	}
 }
 
 func (vm *VM) execBrIfLoop() {
@@ -193,7 +160,7 @@ func (vm *VM) execLoop() {
 	in := vm.currIns().(*LoopI)
 	newCtx := &context{
 		parent:       vm.ctx,
-		stack:        make([]uint64, 0, maxDepth),
+		stack:        make([][]uint64, 0, maxDepth),
 		locals:       vm.ctx.locals,
 		compiledCode: vm.ctx.compiledCode,
 		ins:          in.body,
@@ -234,23 +201,14 @@ func (vm *VM) execIf() {
 	// decide if we enter "if" body
 	val := vm.popUint32()
 	if val > 0 {
-		newCtx := &context{
-			stack:        make([]uint64, 0, maxDepth),
-			locals:       vm.ctx.locals,
-			compiledCode: vm.ctx.compiledCode,
-			ins:          in.body,
-			curFunc:      vm.ctx.curFunc,
-		}
-		vm.frames = append(vm.frames, newCtx)
-		vm.ctx = newCtx
-		retVal = vm.execCode()
+
 		vm.frames = vm.frames[:len(vm.frames)-1]
 		// blindly accept that vm.frames always has at least one frame at this point
 		vm.ctx = vm.frames[len(vm.frames)-1]
 	} else {
 		if in.elseBody != nil {
 			newCtx := &context{
-				stack:        make([]uint64, 0, maxDepth),
+				stack:        make([][]uint64, 0, maxDepth),
 				locals:       vm.ctx.locals,
 				compiledCode: vm.ctx.compiledCode,
 				ins:          in.elseBody,
@@ -289,4 +247,39 @@ func (vm *VM) execIf() {
 
 func (vm *VM) ret() {
 	vm.returned = true
+}
+
+func (vm *VM) execEnd() {
+	m := invertMap(vm.blockStartEnd)
+	endPc := vm.ctx.pc
+	if blockPc, ok := m[int(endPc)]; ok {
+		blockPc++
+		blockType := types.ValueType(vm.ctx.compiledCode[blockPc])
+		switch blockType {
+		case types.ValueTypeEmpty:
+			return
+		case types.ValueTypeI32:
+			val := vm.popInt32()
+			vm.pushInt32(val)
+		case types.ValueTypeI64:
+			val := vm.popInt64()
+			vm.pushInt64(val)
+		case types.ValueTypeF32:
+			val := vm.popInt32()
+			// not sure if that's going to work with floats, though
+			vm.pushFloat32(math.Float32frombits(uint32(val)))
+		case types.ValueTypeF64:
+			val := vm.popInt64()
+			vm.pushFloat64(math.Float64frombits(uint64(val)))
+		}
+	}
+	return
+}
+
+func invertMap[K comparable, V comparable](m map[K]V) map[V]K {
+	out := make(map[V]K)
+	for k, v := range m {
+		out[v] = k
+	}
+	return out
 }

@@ -3,12 +3,12 @@ package exec
 // TODO(threadedstream): likely to get deprecated
 
 var (
-	funcTable map[Bytecode]func()
+	funcTable map[Opcode]func()
 )
 
 func (vm *VM) initFuncTable() {
 	if funcTable == nil {
-		funcTable = map[Bytecode]func(){
+		funcTable = map[Opcode]func(){
 			blockOp:     vm.execBlock,
 			brIfOp:      vm.execBrIfLoop,
 			brOp:        vm.execBrLoop,

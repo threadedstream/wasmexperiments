@@ -45,7 +45,7 @@
             ;; jump to myblock if it is
             (i32.const 0x1)
             (return)
-            (br_if $l)
+            (br_if 0)
         )        
 
         (local.get 0)

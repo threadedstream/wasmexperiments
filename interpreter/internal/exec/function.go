@@ -1,14 +1,14 @@
 package exec
 
 import (
+	"encoding/binary"
 	"errors"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
 )
 
 const (
 	// make an interpreter option?
-	maxDepth         = 15
-	maxStackFrameNum = 256
+	maxDepth = 15
 )
 
 type ExecutionMode int
@@ -19,11 +19,18 @@ const (
 )
 
 type Function struct {
-	numLocals int
-	numParams int
-	code      []byte
-	returns   bool
-	name      string
+	numLocals         int
+	numParams         int
+	code              []byte
+	returns           bool
+	name              string
+	blockStartEndInfo map[int]int
+	branchingInfo     map[int]int
+}
+
+type ifRecord struct {
+	elsePc *int
+	endPc  int
 }
 
 func (fn *Function) call(vm *VM, index int64, mode ExecutionMode, args ...uint64) (any, error) {
@@ -31,7 +38,7 @@ func (fn *Function) call(vm *VM, index int64, mode ExecutionMode, args ...uint64
 		return nil, errors.New("number of arguments do not match")
 	}
 
-	stack := make([]uint64, 0, maxDepth)
+	stack := make([][]uint64, 0)
 
 	//disasmedCode, err := Disassemble(fn.code)
 	//if err != nil {
@@ -41,7 +48,8 @@ func (fn *Function) call(vm *VM, index int64, mode ExecutionMode, args ...uint64
 	//Dump(disasmedCode)
 	compiledCode, _ := Compile(fn.code)
 
-	_ = fn.staticallyAnalyze(compiledCode)
+	fn.gatherBlockInfo(compiledCode)
+	fn.gatherBranchingInfo(compiledCode)
 
 	vm.ctx = &context{
 		stack:        stack,
@@ -94,22 +102,43 @@ func (fn *Function) execInstrSeq(vm *VM) any {
 	return nil
 }
 
-func (fn *Function) staticallyAnalyze(code []byte) map[int]int {
+func (fn *Function) gatherBlockInfo(code []byte) {
 	blockRecords := map[int]int{}
 	endRecords := map[int]int{}
-
-	pc := 0
 	blockIdx := 0
 	endIdx := 0
-	for ; pc < len(code); pc++ {
-		if (Bytecode(code[pc]) == blockOp) || (Bytecode(code[pc]) == loopOp) {
-			blockRecords[blockIdx] = pc
-			blockIdx++
-		} else if Bytecode(code[pc]) == endOp {
-			endRecords[endIdx] = pc
-			endIdx++
+	do := func(opcode Opcode, pc *int) error {
+		if pc == nil {
+			panic("staticallyAnalyze.do: nil pc")
 		}
+		derefPc := *pc
+		switch opcode {
+		case i32LoadOp:
+			derefPc += 9
+		case localGetOp, globalGetOp, localSetOp, callOp, i32ConstOp:
+			derefPc += 5
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp:
+			derefPc++
+		case blockOp, loopOp:
+			blockRecords[blockIdx] = derefPc
+			blockIdx++
+			derefPc += 2
+		case ifOp, elseOp:
+			derefPc++
+			// todo
+		case endOp:
+			endRecords[endIdx] = derefPc
+			endIdx++
+			derefPc++
+		case returnOp:
+			derefPc++
+		}
+		*pc = derefPc
+		return nil
 	}
+
+	_ = Visit(code, do)
+
 	if len(blockRecords) != len(endRecords) {
 		panic("unmatched number of block/loop and ends")
 	}
@@ -118,13 +147,61 @@ func (fn *Function) staticallyAnalyze(code []byte) map[int]int {
 	for k, v := range blockRecords {
 		blockStartEnd[v] = endRecords[l-k]
 	}
-	return blockStartEnd
+	fn.blockStartEndInfo = blockStartEnd
+}
+
+func (fn *Function) gatherBranchingInfo(code []byte) {
+	type blockinfo struct {
+		name string
+		pc   int
+	}
+	branchInfo := make(map[int]int)
+	blockchain := make([]blockinfo, 0)
+	do := func(opcode Opcode, pc *int) error {
+		if pc == nil {
+			panic("staticallyAnalyze.do: nil pc")
+		}
+		derefPc := *pc
+		switch opcode {
+		case i32LoadOp:
+			derefPc += 9
+		case localGetOp, globalGetOp, localSetOp, callOp, i32ConstOp:
+			derefPc += 5
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp:
+			derefPc++
+		case brOp, brIfOp:
+			brPc := derefPc
+			derefPc++
+			idx := binary.LittleEndian.Uint32(code[derefPc:])
+			block := blockchain[len(blockchain)-int(idx)]
+			branchInfo[brPc] = block.pc
+			derefPc += 4
+		case blockOp:
+			blockchain = append(blockchain, blockinfo{"block", derefPc})
+			derefPc += 2
+		case loopOp:
+			blockchain = append(blockchain, blockinfo{"loop", derefPc})
+			derefPc += 2
+		case ifOp, elseOp:
+			derefPc++
+			// todo
+		case endOp:
+			derefPc++
+		case returnOp:
+			derefPc++
+		}
+		*pc = derefPc
+		return nil
+	}
+
+	_ = Visit(code, do)
+	fn.branchingInfo = branchInfo
 }
 
 func (fn *Function) execRawBytecode(vm *VM) any {
 	for int(vm.ctx.pc) < len(vm.ctx.compiledCode) {
 		// skip instruction
-		if handler, ok := funcTable[Bytecode(vm.ctx.compiledCode[vm.ctx.pc])]; ok {
+		if handler, ok := funcTable[Opcode(vm.ctx.compiledCode[vm.ctx.pc])]; ok {
 			vm.ctx.pc++
 			handler()
 			continue

@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	res, err := wapi.Call("load_item")
+	res, err := wapi.Call("block_test", 10)
 	if err != nil {
 		log.Panic(err)
 	}

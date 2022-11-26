@@ -8,13 +8,14 @@ import (
 )
 
 const (
-	wasmPageSize = 65536
+	wasmPageSize     = 65536
+	maxStackFrameNum = 256
 )
 
 type context struct {
 	parent         *context // useful in blocks
 	pendingContext *context
-	stack          []uint64
+	stack          [][]uint64
 	locals         []uint64
 	compiledCode   []byte
 	ins            []Instr
@@ -35,9 +36,10 @@ type VM struct {
 	reader   *wasm_reader.WasmReader
 
 	// for quick querying
-	funcMap      map[string]uint32
-	returned     bool
-	blockCounter uint32
+	blockStartEnd map[int]int
+	funcMap       map[string]uint32
+	returned      bool
+	blockCounter  uint32
 }
 
 func NewVM(m *Module) (*VM, error) {
@@ -84,7 +86,6 @@ func (vm *VM) ExecFunc(index int64, args ...uint64) (ret any, err error) {
 	//if int(index) > len(vm.funcs) {
 	//	return nil, fmt.Errorf("attempting to call a function with an index %d with length of funcs being %d", index, len(vm.funcs))
 	//}
-
 	// TODO(threadedstream): resolves to nil should the function of the following form be called
 	// (func $fac (export "fac") (param $x i32) (result i32)
 	fn := vm.module.GetFunction(int(index))
