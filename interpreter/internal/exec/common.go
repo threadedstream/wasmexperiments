@@ -11,11 +11,11 @@ func (vm *VM) pushUint64(n uint64) {
 		log.Panic("pushUint64: no stack to push to")
 	}
 	// select the topmost stack
-	stack := vm.ctx.stack[len(vm.ctx.stack)-1]
-	if len(stack) >= cap(stack) {
-		log.Panicf("stack exceeding max depth: len=%d,cap=%d", len(stack), cap(stack))
+	stack := &vm.ctx.stack[len(vm.ctx.stack)-1]
+	if len(*stack) >= cap(*stack) {
+		log.Panicf("stack exceeding max depth: len=%d,cap=%d", len(*stack), cap(*stack))
 	}
-	stack = append(stack, n)
+	*stack = append(*stack, n)
 }
 
 func (vm *VM) pushInt64(n int64) {
@@ -44,13 +44,13 @@ func (vm *VM) popUint64() uint64 {
 	if len(vm.ctx.stack) == 0 {
 		log.Panic("popUint64: no stack to pop from")
 	}
-	stack := vm.ctx.stack[len(vm.ctx.stack)-1]
-	if len(stack) == 0 {
+	stack := &vm.ctx.stack[len(vm.ctx.stack)-1]
+	if len(*stack) == 0 {
 		log.Panic("popUint64: expected to have at least one argument in operand stack")
 	}
-	idx := len(stack) - 1
-	val := stack[idx]
-	stack = stack[:idx]
+	idx := len(*stack) - 1
+	val := (*stack)[idx]
+	*stack = (*stack)[:idx]
 	return val
 }
 

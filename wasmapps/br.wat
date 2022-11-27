@@ -24,12 +24,6 @@
         (i32.const 0x1)
     )
 
-    (func (export "fac") (param $x i32) (param $y i32) (result i32)
-        (i32.const 0x10)
-        (local.tee $x)
-        (return)
-    )
-
     (func (export "block_test") (param $x i32) (result i32)
         (block $l (result i32)
             ;; x = x + 1
@@ -44,7 +38,6 @@
             (i32.lt_s) 
             ;; jump to myblock if it is
             (i32.const 0x1)
-            (return)
             (br_if 0)
         )        
 
@@ -67,10 +60,10 @@
                 (i32.lt_s) 
                 ;; jump to myblock if it is
                 (i32.const 0x1)
-                (return)
+                (br $inner)
             )
             (i32.const 0x10)
-            (return)
+            (br $outer)
         )        
         (i32.const 0x20)
         (return)
@@ -106,11 +99,33 @@
                 (i32.const 0xA)
                 (i32.lt_s)
                 (br_if $inner)
-                (br $outer)
             )
+            (i32.const 0x2)
+            (local.get $x)
+            (i32.mul)
+            (local.set $x)
         )
         (local.get $x)
     )
 
+    (func $fac (export "fac") (param $x i32) (result i32)
+        (local.get $x)
+        (i32.const 0)
+        (i32.eq)
+        (if (result i32)
+            (then
+                (i32.const 1)
+                (return)
+            )
+            (else 
+                (local.get $x)
+                (local.get $x)
+                (i32.const 1)
+                (i32.sub)
+                (call $fac)
+                (i32.mul)
+            )
+        )
+    )
 )
 

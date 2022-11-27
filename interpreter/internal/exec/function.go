@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/threadedstream/wasmexperiments/internal/pkg/reporter"
+	"github.com/threadedstream/wasmexperiments/internal/types"
 )
 
 const (
@@ -18,14 +19,27 @@ const (
 	ExecutionModeRawBytecode
 )
 
+type branchInfo struct {
+	nestingLevel int
+	jumpToPc     int
+}
+
+type ifInfo struct {
+	nestingLevel int
+	jumpToElsePc *int
+	jumpToEndPc  int
+}
+
 type Function struct {
+	name              string
 	numLocals         int
 	numParams         int
 	code              []byte
 	returns           bool
-	name              string
+	ty                types.ValueType
 	blockStartEndInfo map[int]int
-	branchingInfo     map[int]int
+	branchingInfo     map[int]branchInfo
+	ifBranchingInfo   map[int]ifInfo
 }
 
 type ifRecord struct {
@@ -39,11 +53,6 @@ func (fn *Function) call(vm *VM, index int64, mode ExecutionMode, args ...uint64
 	}
 
 	stack := make([][]uint64, 0)
-
-	//disasmedCode, err := Disassemble(fn.code)
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	//Dump(disasmedCode)
 	compiledCode, _ := Compile(fn.code)
@@ -60,6 +69,10 @@ func (fn *Function) call(vm *VM, index int64, mode ExecutionMode, args ...uint64
 	}
 
 	vm.ctxchain = append(vm.ctxchain, vm.ctx)
+	vm.blockStartEnd = fn.blockStartEndInfo
+	vm.branchingInfo = fn.branchingInfo
+
+	vm.ctx.stack = append(vm.ctx.stack, make([]uint64, 0, maxDepth))
 
 	for _, arg := range args {
 		vm.pushUint64(arg)
@@ -115,16 +128,16 @@ func (fn *Function) gatherBlockInfo(code []byte) {
 		switch opcode {
 		case i32LoadOp:
 			derefPc += 9
-		case localGetOp, globalGetOp, localSetOp, callOp, i32ConstOp:
+		case localGetOp, globalGetOp, localSetOp, callOp, i32ConstOp, brIfOp, brOp:
 			derefPc += 5
-		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp:
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp, elseOp:
 			derefPc++
 		case blockOp, loopOp:
 			blockRecords[blockIdx] = derefPc
 			blockIdx++
 			derefPc += 2
-		case ifOp, elseOp:
-			derefPc++
+		case ifOp:
+			derefPc += 2
 			// todo
 		case endOp:
 			endRecords[endIdx] = derefPc
@@ -139,24 +152,25 @@ func (fn *Function) gatherBlockInfo(code []byte) {
 
 	_ = Visit(code, do)
 
-	if len(blockRecords) != len(endRecords) {
-		panic("unmatched number of block/loop and ends")
-	}
 	l := len(blockRecords)
 	blockStartEnd := map[int]int{}
 	for k, v := range blockRecords {
-		blockStartEnd[v] = endRecords[l-k]
+		blockStartEnd[v] = endRecords[l-k-1]
 	}
 	fn.blockStartEndInfo = blockStartEnd
 }
 
 func (fn *Function) gatherBranchingInfo(code []byte) {
 	type blockinfo struct {
-		name string
-		pc   int
+		name         string
+		pc           int
+		nestingLevel int
 	}
-	branchInfo := make(map[int]int)
+	branchingInfo := make(map[int]branchInfo)
+	ifBranchingInfo := make(map[int]ifInfo)
 	blockchain := make([]blockinfo, 0)
+	ifBlockchain := make([]blockinfo, 0)
+	var nestingLevel int
 	do := func(opcode Opcode, pc *int) error {
 		if pc == nil {
 			panic("staticallyAnalyze.do: nil pc")
@@ -167,25 +181,43 @@ func (fn *Function) gatherBranchingInfo(code []byte) {
 			derefPc += 9
 		case localGetOp, globalGetOp, localSetOp, callOp, i32ConstOp:
 			derefPc += 5
-		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp:
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp, elseOp:
 			derefPc++
 		case brOp, brIfOp:
 			brPc := derefPc
 			derefPc++
 			idx := binary.LittleEndian.Uint32(code[derefPc:])
-			block := blockchain[len(blockchain)-int(idx)]
-			branchInfo[brPc] = block.pc
+			block := blockchain[len(blockchain)-int(idx)-1]
+			if block.name == "loop" {
+				branchingInfo[brPc] = branchInfo{jumpToPc: block.pc, nestingLevel: block.nestingLevel}
+			} else if block.name == "block" {
+				endPc := fn.blockStartEndInfo[block.pc]
+				branchingInfo[brPc] = branchInfo{jumpToPc: endPc + 1, nestingLevel: block.nestingLevel}
+				blockchain = blockchain[:len(blockchain)-1]
+			}
 			derefPc += 4
 		case blockOp:
-			blockchain = append(blockchain, blockinfo{"block", derefPc})
+			blockchain = append(blockchain, blockinfo{"block", derefPc, nestingLevel})
+			nestingLevel++
 			derefPc += 2
 		case loopOp:
-			blockchain = append(blockchain, blockinfo{"loop", derefPc})
+			blockchain = append(blockchain, blockinfo{"loop", derefPc, nestingLevel})
+			nestingLevel++
 			derefPc += 2
-		case ifOp, elseOp:
-			derefPc++
+		case ifOp:
+			ifBlockchain = append(ifBlockchain, blockinfo{"if", derefPc, nestingLevel})
+			ifBranchingInfo[derefPc] = ifInfo{}
+			derefPc += 2
 			// todo
+		case elseOp:
+			block := ifBlockchain[len(ifBlockchain)-1]
+			ifBranchingInfo[block.pc] = ifInfo{jumpToElsePc: &derefPc}
 		case endOp:
+			if len(ifBlockchain) > 0 {
+				block := ifBlockchain[len(ifBlockchain)-1]
+				info := ifBranchingInfo[block.pc]
+				info.jumpToEndPc = derefPc + 1
+			}
 			derefPc++
 		case returnOp:
 			derefPc++
@@ -195,7 +227,8 @@ func (fn *Function) gatherBranchingInfo(code []byte) {
 	}
 
 	_ = Visit(code, do)
-	fn.branchingInfo = branchInfo
+	fn.ifBranchingInfo = ifBranchingInfo
+	fn.branchingInfo = branchingInfo
 }
 
 func (fn *Function) execRawBytecode(vm *VM) any {

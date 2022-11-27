@@ -231,9 +231,9 @@ func Compile(code []byte) ([]byte, error) {
 			var b [4]byte
 			binaryFormat.PutUint32(b[:], imm)
 			writer.Write(b[:])
-		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp, returnOp, endOp:
+		case i32AddOp, i32SubOp, i32MulOp, i32DivUOp, i32DivSOp, i32EqOp, i32LtSOp, returnOp, endOp, elseOp:
 			writer.WriteByte(opcode)
-		case blockOp, loopOp:
+		case blockOp, loopOp, ifOp:
 			writer.WriteByte(opcode)
 			var imm uint8
 			imm, err = wbinary.ReadVarUint7(reader)

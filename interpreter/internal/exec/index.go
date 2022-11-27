@@ -98,6 +98,7 @@ func (m *Module) initializeFunctionIndexSpace() {
 				code:      m.CodeSection.Entries[i].Code,
 				name:      m.ImportSection.Entries[i].ExportName,
 				numParams: len(m.TypesSection.sigs[i].Params),
+				ty:        m.TypesSection.sigs[i].Results[0],
 				returns:   m.TypesSection.sigs[i].Results[0] != 0,
 			}
 		}
@@ -110,6 +111,7 @@ func (m *Module) initializeFunctionIndexSpace() {
 				code:      m.CodeSection.Entries[idx].Code,
 				name:      "",
 				numParams: len(m.TypesSection.sigs[typeIdx].Params),
+				ty:        m.TypesSection.sigs[typeIdx].Results[0],
 				returns:   m.TypesSection.sigs[typeIdx].Results[0] != 0,
 			}
 			idx++

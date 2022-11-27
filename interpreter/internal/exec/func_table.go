@@ -10,11 +10,12 @@ func (vm *VM) initFuncTable() {
 	if funcTable == nil {
 		funcTable = map[Opcode]func(){
 			blockOp:     vm.execBlock,
-			brIfOp:      vm.execBrIfLoop,
-			brOp:        vm.execBrLoop,
+			brIfOp:      vm.execBrIf,
+			brOp:        vm.execBr,
 			loopOp:      vm.execLoop,
 			ifOp:        vm.execIf,
 			returnOp:    vm.ret,
+			endOp:       vm.execEnd,
 			i32LtSOp:    vm.i32LtS,
 			i32EqOp:     vm.i32Eq,
 			i32AddOp:    vm.i32Add,
