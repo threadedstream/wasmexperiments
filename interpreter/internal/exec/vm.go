@@ -36,12 +36,13 @@ type VM struct {
 	reader   *wasm_reader.WasmReader
 
 	// for quick querying
-	blockStartEnd   map[int]int
-	branchingInfo   map[int]branchInfo
-	ifBranchingInfo map[int]ifInfo
-	funcMap         map[string]uint32
-	returned        bool
-	blockCounter    uint32
+	blockStartEnd     map[int]int
+	branchingInfo     map[int]branchInfo
+	ifBranchingInfo   map[int]ifInfo
+	elseBranchingInfo map[int]int
+	funcMap           map[string]uint32
+	returned          bool
+	blockCounter      uint32
 }
 
 func NewVM(m *Module) (*VM, error) {

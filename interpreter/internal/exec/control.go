@@ -20,6 +20,7 @@ var (
 
 func (vm *VM) execCall() {
 	index := binary.LittleEndian.Uint32(vm.ctx.compiledCode[vm.ctx.pc:])
+	vm.ctx.pc += 4
 	fn := vm.module.GetFunction(int(index))
 	var args []uint64
 	for i := 0; i < fn.numParams; i++ {
@@ -29,19 +30,19 @@ func (vm *VM) execCall() {
 	if err != nil {
 		panic(err)
 	}
-	vm.frames = vm.frames[:len(vm.frames)-1]
+	vm.ctx = vm.frames[len(vm.frames)-1]
 	switch fn.ty {
 	case types.ValueTypeEmpty:
 		return
 	case types.ValueTypeI32:
-		vm.pushInt32(val.(int32))
+		vm.pushInt32(int32(val.(uint64)))
 	case types.ValueTypeI64:
-		vm.pushInt64(val.(int64))
+		vm.pushInt64(int64(val.(uint64)))
 	case types.ValueTypeF32:
 		// not sure if that's going to work with floats, though
-		vm.pushFloat32(math.Float32frombits(uint32(val.(int32))))
+		vm.pushFloat32(math.Float32frombits(uint32(val.(uint64))))
 	case types.ValueTypeF64:
-		vm.pushFloat64(math.Float64frombits(uint64(val.(int64))))
+		vm.pushFloat64(math.Float64frombits(val.(uint64)))
 	}
 }
 
@@ -80,6 +81,24 @@ func (vm *VM) execLoop() {
 }
 
 func (vm *VM) execIf() {
+	value := vm.popUint64()
+	vm.pushStack()
+	info := vm.ifBranchingInfo[int(vm.ctx.pc-1)]
+	vm.ctx.pc++
+	if value > 0 {
+		return
+	} else {
+		if info.jumpToElsePc != nil {
+			vm.ctx.pc = int64(*info.jumpToElsePc + 1)
+		} else {
+			vm.ctx.pc = int64(info.jumpToEndPc)
+		}
+	}
+}
+
+func (vm *VM) execElse() {
+	targetJump := vm.elseBranchingInfo[int(vm.ctx.pc-1)]
+	vm.ctx.pc = int64(targetJump)
 }
 
 func (vm *VM) ret() {
@@ -87,33 +106,37 @@ func (vm *VM) ret() {
 }
 
 func (vm *VM) execEnd() {
-	m := invertMap(vm.blockStartEnd)
-	endPc := vm.ctx.pc
-	if blockPc, ok := m[int(endPc)]; ok {
-		blockPc++
-		blockType := types.ValueType(vm.ctx.compiledCode[blockPc])
-		switch blockType {
-		case types.ValueTypeEmpty:
-			return
-		case types.ValueTypeI32:
-			val := vm.popInt32()
-			vm.pushInt32(val)
-		case types.ValueTypeI64:
-			val := vm.popInt64()
-			vm.pushInt64(val)
-		case types.ValueTypeF32:
-			val := vm.popInt32()
-			// not sure if that's going to work with floats, though
-			vm.pushFloat32(math.Float32frombits(uint32(val)))
-		case types.ValueTypeF64:
-			val := vm.popInt64()
-			vm.pushFloat64(math.Float64frombits(uint64(val)))
-		}
+	if len(vm.ctx.stack[len(vm.ctx.stack)-1]) > 0 {
+		val := vm.popUint64()
+		vm.popStack()
+		vm.pushUint64(val)
 	} else {
-		_ = invertMap(vm.ifBranchingInfo)
-		// TODO(threadedstream): provide handling for case when end is a terminator for an if opcode
+		vm.popStack()
 	}
-	return
+	//m := invertMap(vm.blockStartEnd)
+	//endPc := vm.ctx.pc
+	//if blockPc, ok := m[int(endPc)]; ok {
+	//	blockPc++
+	//	blockType := types.ValueType(vm.ctx.compiledCode[blockPc])
+	//	switch blockType {
+	//	case types.ValueTypeEmpty:
+	//		return
+	//	case types.ValueTypeI32:
+	//		val := vm.popInt32()
+	//		vm.pushInt32(val)
+	//	case types.ValueTypeI64:
+	//		val := vm.popInt64()
+	//		vm.pushInt64(val)
+	//	case types.ValueTypeF32:
+	//		val := vm.popInt32()
+	//		// not sure if that's going to work with floats, though
+	//		vm.pushFloat32(math.Float32frombits(uint32(val)))
+	//	case types.ValueTypeF64:
+	//		val := vm.popInt64()
+	//		vm.pushFloat64(math.Float64frombits(uint64(val)))
+	//	}
+	//}
+	//return
 }
 
 func invertMap[K comparable, V comparable](m map[K]V) map[V]K {

@@ -6,6 +6,18 @@ import (
 	"math"
 )
 
+func (vm *VM) pushStack() {
+	stack := make([]uint64, 0, maxDepth)
+	vm.ctx.stack = append(vm.ctx.stack, stack)
+}
+
+func (vm *VM) popStack() {
+	if len(vm.ctx.stack) == 0 {
+		log.Panic("popFrame: no frame to pop")
+	}
+	vm.ctx.stack = vm.ctx.stack[:len(vm.ctx.stack)-1]
+}
+
 func (vm *VM) pushUint64(n uint64) {
 	if len(vm.ctx.stack) == 0 {
 		log.Panic("pushUint64: no stack to push to")

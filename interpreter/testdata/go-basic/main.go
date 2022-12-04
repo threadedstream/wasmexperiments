@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	res, err := wapi.Call("fac", 5)
+	res, err := wapi.Call("fac", 30)
 	if err != nil {
 		log.Panic(err)
 	}

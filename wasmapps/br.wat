@@ -112,6 +112,7 @@
         (local.get $x)
         (i32.const 0)
         (i32.eq)
+        ;; 
         (if (result i32)
             (then
                 (i32.const 1)
